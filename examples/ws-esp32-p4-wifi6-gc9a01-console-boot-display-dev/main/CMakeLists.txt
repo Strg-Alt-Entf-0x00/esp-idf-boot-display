@@ -1,0 +1,12 @@
+idf_component_register(
+    SRCS 
+        "main.c"
+        "console_commands.c"
+    INCLUDE_DIRS 
+        "."
+    REQUIRES
+        console
+        driver
+        nvs_flash
+        esp-idf-boot-display
+)

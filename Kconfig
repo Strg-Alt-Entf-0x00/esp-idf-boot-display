@@ -1,0 +1,185 @@
+menu "Boot Display Configuration"
+
+    choice BOOT_DISPLAY_BACKEND
+        prompt "Hardware Display Engine & Backend"
+        default BOOT_DISPLAY_BACKEND_LP_SPI
+        help
+            Select the hardware engine responsible for the boot splash animation.
+
+        config BOOT_DISPLAY_BACKEND_LP_SPI
+            bool "LP-Core Autonomous SPI (GC9A01/ST7789, <15ms boot)"
+            help
+                Executes autonomously on the LP-Core (ULP RISC-V @ 40 MHz).
+                Renders immediately on power-on before HP-Core finishes boot.
+                Targeted for GC9A01 240x240 round LCD on LP GPIO 2-5.
+
+        config BOOT_DISPLAY_BACKEND_HP_MIPI_DSI
+            bool "HP-Core MIPI-DSI (4.3\" / 7\" LCD, 800x480 / 1024x600)"
+            help
+                Executes on the HP-Core using the ESP32-P4 MIPI-DSI Host Controller.
+                Renders a centered circular or banner boot logo once DSI PHY is ready.
+
+        config BOOT_DISPLAY_BACKEND_HP_SPI
+            bool "HP-Core High-Speed SPI (SPI2_HOST with DMA)"
+            help
+                Executes on the HP-Core using SPI2_HOST with DMA transfers at 40-80 MHz.
+                Useful when LP-Core is not available or SPI pins are HP-only.
+    endchoice
+
+    menu "Display Resolution & Geometry"
+        config BOOT_DISPLAY_WIDTH
+            int "Panel Width in Pixels"
+            default 240
+            help
+                Horizontal resolution of the display panel.
+
+        config BOOT_DISPLAY_HEIGHT
+            int "Panel Height in Pixels"
+            default 240
+            help
+                Vertical resolution of the display panel.
+
+        config BOOT_DISPLAY_IS_CIRCULAR
+            bool "Circular Display Masking & Centered Proportions"
+            default y
+            help
+                Enables circular-optimized geometry calculation where radius R = min(W, H)/2.
+
+        config BOOT_DISPLAY_RING_SEGMENTS
+            int "Outer Progress Ring Dot Segment Count"
+            default 48
+            range 12 72
+            help
+                Number of discrete segment dots around the circular progress ring (default: 48, min: 12, max: 72).
+    endmenu
+
+    menu "Color Theme & Visual Palette"
+        choice BOOT_DISPLAY_THEME
+            prompt "Boot Animation Visual Theme"
+            default BOOT_DISPLAY_THEME_PIXEL_MASCOT
+            help
+                Select the artwork and mascot theme rendered during boot.
+
+            config BOOT_DISPLAY_THEME_PIXEL_MASCOT
+                bool "Animated Pixel Mascot (Interactive with Gaze Tracking & Moods)"
+                help
+                    Interactive animated pixel mascot with mood expressions (sleepy, loading, worried, happy),
+                    eye gaze tracking following the progress ring, and E.S.P.I.D.F sliding wordmark.
+
+            config BOOT_DISPLAY_THEME_ESP32_CORE
+                bool "ESP32 Modern Tech Core (Clean Geometric Microchip & Pulse Ring)"
+                help
+                    Neutral, modern geometric microchip icon with rotating pulse ring.
+                    Ideal for generic ESP32-P4 and ESP-IDF open-source projects.
+
+            config BOOT_DISPLAY_THEME_CUSTOM
+                bool "Custom Artwork Header (Generated via boot_display_studio.html)"
+                help
+                    Use custom bitmap art and geometry exported from tools-web/boot_display_studio.html.
+        endchoice
+
+        config BOOT_DISPLAY_HAPPY_THRESHOLD_PERCENT
+            int "Rainbow Celebration Ring Activation Percent"
+            default 85
+            range 50 100
+            help
+                Progress percentage (0-100) at which the celebratory rainbow ring
+                and happy smiling face activate. Default 85% gives a visible, satisfying finish.
+
+        config BOOT_DISPLAY_COMPLETION_HOLD_FRAMES
+            int "Completion Hold Frames (Celebration Grace Period)"
+            default 15
+            range 0 60
+            help
+                Number of animation frames (~40ms each) to hold at 100% progress
+                before signaling DONE to HP-Core. 15 frames = ~600ms celebration.
+
+        config BOOT_DISPLAY_COLOR_BG
+            hex "Background Color (RGB565)"
+            default 0x0000
+            help
+                Background color in RGB565 format (default 0x0000 = Black).
+
+        config BOOT_DISPLAY_COLOR_RING
+            hex "Progress Ring Color (RGB565)"
+            default 0x073F
+            help
+                Progress ring indicator in RGB565 format (default 0x073F = Cyan/Blue).
+
+        config BOOT_DISPLAY_COLOR_MASCOT
+            hex "Mascot Body Color (RGB565)"
+            default 0xFFFF
+            help
+                Mascot body fill in RGB565 format (default 0xFFFF = White).
+
+        config BOOT_DISPLAY_COLOR_ACCENT
+            hex "Accent & Eye Color (RGB565)"
+            default 0x073F
+            help
+                Eye and accent details in RGB565 format (default 0x073F = Cyan).
+    endmenu
+
+    menu "SPI GPIO & Clock Settings"
+        config BOOT_DISPLAY_MOSI_GPIO
+            int "SPI MOSI / SDA GPIO"
+            default 2
+            help
+                GPIO connected to LCD MOSI line (must be LP-capable for LP-SPI).
+
+        config BOOT_DISPLAY_SCLK_GPIO
+            int "SPI SCLK GPIO"
+            default 3
+            help
+                GPIO connected to LCD SCLK line (must be LP-capable for LP-SPI).
+
+        config BOOT_DISPLAY_CS_GPIO
+            int "SPI CS GPIO"
+            default 4
+            help
+                GPIO connected to LCD CS line (must be LP-capable for LP-SPI).
+
+        config BOOT_DISPLAY_DC_GPIO
+            int "SPI DC / RS GPIO"
+            default 5
+            help
+                GPIO connected to LCD DC line (must be LP-capable for LP-SPI).
+
+        config BOOT_DISPLAY_RST_GPIO
+            int "Hardware Reset GPIO"
+            default 49
+            help
+                GPIO connected to LCD RST line (driven by HP-Core before LP start).
+
+        config BOOT_DISPLAY_SPI_CLOCK_HZ
+            int "SPI Clock Speed in Hz"
+            default 8000000
+            help
+                Clock frequency for SPI transfers (8 MHz for LP-SPI, up to 40 MHz for HP-SPI).
+    endmenu
+
+    # Backward compatibility mappings for legacy CONFIG_LP_BOOT_DISPLAY_*
+    config LP_BOOT_DISPLAY_MOSI_GPIO
+        int
+        default BOOT_DISPLAY_MOSI_GPIO
+
+    config LP_BOOT_DISPLAY_SCLK_GPIO
+        int
+        default BOOT_DISPLAY_SCLK_GPIO
+
+    config LP_BOOT_DISPLAY_CS_GPIO
+        int
+        default BOOT_DISPLAY_CS_GPIO
+
+    config LP_BOOT_DISPLAY_DC_GPIO
+        int
+        default BOOT_DISPLAY_DC_GPIO
+
+    config LP_BOOT_DISPLAY_RST_GPIO
+        int
+        default BOOT_DISPLAY_RST_GPIO
+
+    config LP_BOOT_DISPLAY_SPI_CLOCK_HZ
+        int
+        default BOOT_DISPLAY_SPI_CLOCK_HZ
+
+endmenu

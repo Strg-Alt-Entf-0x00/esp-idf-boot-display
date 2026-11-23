@@ -1,0 +1,2988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP-IDF Boot Display Studio - Visual Designer & Web Serial</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --surface: #131b2e;
+      --surface-border: #1e293b;
+      --surface-hover: #1e293b;
+      --primary: #06b6d4;
+      --primary-hover: #0891b2;
+      --accent: #10b981;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --bezel: #1e2538;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
+
+    /* Header */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--surface-border);
+      padding: 0.75rem 1.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .brand-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+    .brand-title {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: #fff;
+      letter-spacing: -0.01em;
+    }
+    .badge {
+      font-size: 0.72rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+      background: rgba(6, 182, 212, 0.15);
+      color: var(--primary);
+      border: 1px solid rgba(6, 182, 212, 0.4);
+      font-weight: 600;
+    }
+    .brand-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    /* Monochromatic Horizontal Telemetry Bar in Titlebar */
+    .header-telemetry {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      background: #090e1a;
+      border: 1px solid var(--surface-border);
+      border-radius: 8px;
+      padding: 0.35rem 0.85rem;
+      font-size: 0.78rem;
+    }
+    .telemetry-item {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .telemetry-label {
+      color: var(--text-muted);
+      font-weight: 500;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .telemetry-val {
+      color: var(--text);
+      font-family: "JetBrains Mono", Consolas, monospace;
+      font-weight: 600;
+      font-size: 0.76rem;
+    }
+    .telemetry-sep {
+      color: rgba(255, 255, 255, 0.15);
+      font-size: 0.75rem;
+      user-select: none;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    /* Icon Buttons & Tooltips */
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      border: 1px solid var(--surface-border);
+      background: #0f172a;
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .icon-btn:hover {
+      background: #1e293b;
+      border-color: var(--text-muted);
+      color: #fff;
+    }
+    .icon-btn.primary {
+      background: var(--primary);
+      color: #020617;
+      border-color: var(--primary);
+    }
+    .icon-btn.primary:hover {
+      background: var(--primary-hover);
+    }
+    .icon-btn.active {
+      background: rgba(6, 182, 212, 0.18);
+      color: var(--primary);
+      border-color: var(--primary);
+    }
+    .icon-btn.connected {
+      background: rgba(16, 185, 129, 0.15);
+      color: #10b981;
+      border-color: #10b981;
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+    }
+    .icon-btn.connecting {
+      background: rgba(245, 158, 11, 0.15);
+      color: #f59e0b;
+      border-color: #f59e0b;
+    }
+    .icon-btn.unrecognized {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+      border-color: #ef4444;
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+    }
+
+    /* Standard Buttons */
+    .btn {
+      padding: 0.5rem 0.9rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.8rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--primary); color: #020617; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-outline { background: transparent; border-color: var(--surface-border); color: var(--text); }
+    .btn-outline:hover { background: #1e293b; border-color: var(--text-muted); }
+    .btn-sm { padding: 0.35rem 0.65rem; font-size: 0.75rem; }
+
+    /* Layout */
+    .main-layout {
+      display: grid;
+      grid-template-columns: 460px 1fr;
+      gap: 1.5rem;
+      padding: 1.5rem;
+      flex: 1;
+      max-width: 1650px;
+      margin: 0 auto;
+      width: 100%;
+      align-items: start;
+    }
+
+    @media (max-width: 1100px) {
+      .main-layout { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .display-viewport-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.15rem;
+      background: radial-gradient(circle at center, #162036 0%, #0b0f19 75%);
+      border-radius: 12px;
+      padding: 1.5rem;
+      border: 1px solid var(--surface-border);
+      position: sticky;
+      top: 1.25rem;
+      align-self: flex-start;
+      width: 100%;
+    }
+
+    /* GC9A01 Round Display Bezel Simulator */
+    .round-lcd-bezel {
+      width: 330px;
+      height: 330px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #334155, #0f172a 70%, #020617 100%);
+      box-shadow: 0 0 35px rgba(0, 0, 0, 0.8), inset 0 0 15px rgba(255, 255, 255, 0.1), inset 0 0 25px rgba(0, 0, 0, 0.9);
+      padding: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      user-select: none;
+    }
+    .round-lcd-inner-ring {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      box-shadow: inset 0 0 10px #000;
+      overflow: hidden;
+      position: relative;
+      background: #000;
+      cursor: crosshair;
+    }
+    #screenCanvas {
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+      display: block;
+    }
+
+    /* Static Non-Jumping Status Ribbon */
+    .status-ribbon {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+      font-size: 0.8rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .status-pill {
+      padding: 0.3rem 0.65rem;
+      border-radius: 6px;
+      background: #1e293b;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      min-width: 90px;
+      justify-content: center;
+    }
+
+    /* Fixed-Width Controls Row */
+    .controls-btn-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+    }
+
+    /* Drawer Quick Hardware Action Groups */
+    .drawer-hw-group {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .drawer-sep {
+      width: 1px;
+      height: 16px;
+      background: rgba(255, 255, 255, 0.15);
+      margin: 0 0.35rem;
+    }
+
+    .controls-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .tabs-header {
+      display: flex;
+      border-bottom: 1px solid var(--surface-border);
+      gap: 0.25rem;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      padding: 0.65rem 1rem;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.83rem;
+      transition: all 0.2s;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .tab-btn svg {
+      opacity: 0.7;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn:hover svg { opacity: 1; }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-btn.active svg { opacity: 1; stroke: var(--primary); }
+
+    .tab-content { display: none; flex-direction: column; gap: 1.25rem; }
+    .tab-content.active { display: flex; }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+    .control-label {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .control-label span.val { color: var(--primary); font-family: monospace; font-weight: 700; }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--primary);
+      height: 6px;
+      background: #1e293b;
+      border-radius: 3px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* Slider + Spinbox Row */
+    .spinbox-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .spinbox-row input[type="range"] {
+      flex: 1;
+    }
+    .spinbox {
+      width: 68px;
+      padding: 0.35rem 0.5rem;
+      border-radius: 6px;
+      background: #0f172a;
+      border: 1px solid var(--surface-border);
+      color: var(--text);
+      font-family: "JetBrains Mono", Consolas, monospace;
+      font-size: 0.82rem;
+      text-align: right;
+    }
+    .spinbox:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .unit-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      min-width: 18px;
+    }
+
+    /* Layer / Element Baukasten Manager */
+    .elements-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+    .element-card {
+      background: #0f172a;
+      border: 1px solid var(--surface-border);
+      border-radius: 8px;
+      padding: 0.65rem 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .element-card:hover { border-color: rgba(6, 182, 212, 0.4); }
+    .element-card.active {
+      border-color: var(--primary);
+      background: rgba(6, 182, 212, 0.08);
+    }
+    .element-left {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+    }
+    .element-checkbox {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+    .element-name {
+      font-size: 0.83rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .element-meta {
+      font-size: 0.73rem;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+
+    .element-inspector {
+      background: #090e1a;
+      border: 1px solid var(--surface-border);
+      border-radius: 8px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+
+    .color-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 0.75rem;
+    }
+    .color-item {
+      background: #0f172a;
+      border: 1px solid var(--surface-border);
+      border-radius: 8px;
+      padding: 0.65rem;
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+    }
+    .color-picker {
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: transparent;
+      flex-shrink: 0;
+    }
+    .color-meta { display: flex; flex-direction: column; font-size: 0.78rem; flex: 1; }
+    .color-meta strong { color: var(--text); }
+    .color-meta code { color: var(--primary); font-size: 0.72rem; font-family: monospace; }
+
+    .code-box {
+      background: #080c14;
+      border: 1px solid var(--surface-border);
+      border-radius: 8px;
+      padding: 1rem;
+      font-family: "JetBrains Mono", Consolas, monospace;
+      font-size: 0.8rem;
+      color: #38bdf8;
+      max-height: 380px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      user-select: text;
+    }
+
+    .dropzone {
+      border: 2px dashed var(--surface-border);
+      border-radius: 12px;
+      padding: 2rem 1.25rem;
+      text-align: center;
+      background: #090e1a;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .dropzone:hover, .dropzone.dragover { border-color: var(--primary); background: rgba(6, 182, 212, 0.05); }
+
+    /* Pixel Art Sprite Drawing Canvas */
+    .pixel-grid-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      align-items: center;
+      background: #090e1a;
+      border: 1px solid var(--surface-border);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+    #pixelArtCanvas {
+      background: #000;
+      border: 1px solid var(--primary);
+      cursor: cell;
+      image-rendering: pixelated;
+    }
+
+    /* Collapsible Bottom Terminal Drawer */
+    .bottom-terminal-drawer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #090e1a;
+      border-top: 1px solid var(--surface-border);
+      box-shadow: 0 -8px 25px rgba(0, 0, 0, 0.75);
+      z-index: 900;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(100%);
+      transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      height: 220px;
+    }
+    .bottom-terminal-drawer.open {
+      transform: translateY(0);
+    }
+    .drawer-header {
+      background: #0f172a;
+      padding: 0.4rem 1rem;
+      border-bottom: 1px solid var(--surface-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+    }
+    .drawer-title {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .drawer-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .icon-btn-sm {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      border: 1px solid var(--surface-border);
+      background: transparent;
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .icon-btn-sm:hover {
+      background: #1e293b;
+      color: #fff;
+      border-color: var(--text-muted);
+    }
+    .bottom-terminal-drawer .terminal-box {
+      flex: 1;
+      border-radius: 0;
+      border: none;
+      height: auto;
+      background: #030712;
+      padding: 0.6rem 1rem;
+      font-family: "JetBrains Mono", Consolas, monospace;
+      font-size: 0.75rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .term-line { line-height: 1.35; word-break: break-all; }
+    .term-info { color: #64748b; }
+    .term-tx { color: #06b6d4; font-weight: 600; }
+    .term-rx { color: #10b981; }
+    .term-err { color: #ef4444; }
+
+    .drawer-cmd-bar {
+      display: flex;
+      padding: 0.4rem 1rem;
+      background: #0b1120;
+      border-top: 1px solid var(--surface-border);
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .drawer-cmd-bar input[type="text"] {
+      flex: 1;
+      background: #030712;
+      border: 1px solid var(--surface-border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 0.35rem 0.65rem;
+      font-family: "JetBrains Mono", Consolas, monospace;
+      font-size: 0.78rem;
+      outline: none;
+    }
+    .drawer-cmd-bar input[type="text"]:focus {
+      border-color: var(--primary);
+    }
+
+    /* Custom Right-Click Context Menu */
+    .context-menu {
+      position: absolute;
+      display: none;
+      background: #131b2e;
+      border: 1px solid var(--surface-border);
+      border-radius: 8px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+      z-index: 100;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 140px;
+    }
+    .context-item {
+      padding: 0.5rem 0.85rem;
+      font-size: 0.8rem;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: background 0.15s;
+    }
+    .context-item:hover { background: #1e293b; color: var(--primary); }
+
+    /* Quick Guide Modal */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(5px);
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+      padding: 1.25rem;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-card {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 14px;
+      max-width: 660px;
+      width: 100%;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85);
+      overflow: hidden;
+    }
+    .modal-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--surface-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #0f172a;
+    }
+    .modal-body {
+      padding: 1.25rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.15rem;
+    }
+    .help-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .help-section h4 {
+      font-size: 0.88rem;
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .help-section p {
+      font-size: 0.8rem;
+      line-height: 1.5;
+      color: var(--text-muted);
+    }
+    .help-section code {
+      color: #38bdf8;
+      font-size: 0.75rem;
+      background: #0f172a;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      border: 1px solid var(--surface-border);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand-container">
+      <div class="brand-title">
+        <span>ESP-IDF Boot Display Studio</span>
+        <span class="badge">v2.1.0</span>
+      </div>
+      <div class="brand-sub">ESP32-P4 / GC9A01 @ 30 FPS</div>
+    </div>
+
+    <!-- Monochromatic Unified Telemetry Strip in Titlebar -->
+    <div class="header-telemetry">
+      <div class="telemetry-item" title="LP-Core Display Initialization Latency">
+        <span class="telemetry-label">Init:</span>
+        <span class="telemetry-val" id="telInitTime">-- µs</span>
+      </div>
+      <div class="telemetry-sep">/</div>
+      <div class="telemetry-item" title="Longest Frame Render Time">
+        <span class="telemetry-label">Frame:</span>
+        <span class="telemetry-val" id="telFrameTime">-- µs</span>
+      </div>
+      <div class="telemetry-sep">/</div>
+      <div class="telemetry-item" title="Current LP-Core Firmware State">
+        <span class="telemetry-label">LP-Core:</span>
+        <span class="telemetry-val" id="telState">--</span>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <!-- Toggle Serial Console Bottom Drawer Icon-Button -->
+      <button class="icon-btn" id="btnToggleTerminal" title="Toggle ESP32 Serial Console (Bottom Drawer)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="4 17 10 11 4 5"></polyline>
+          <line x1="12" y1="19" x2="20" y2="19"></line>
+        </svg>
+      </button>
+
+      <!-- Web Serial Connect Icon-Button with Tooltip -->
+      <button class="icon-btn" id="btnConnectSerial" title="Connect ESP32 (115200 Baud)">
+        <svg id="connIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+          <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+          <line x1="6" y1="6" x2="6.01" y2="6"></line>
+          <line x1="6" y1="18" x2="6.01" y2="18"></line>
+        </svg>
+      </button>
+
+      <!-- Quick Guide / Help Icon-Button -->
+      <button class="icon-btn" id="btnHelp" title="User Guide & Studio Help">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="main-layout">
+    <!-- Left Column: Circular Screen Simulator (Sticky & Compact) -->
+    <div class="display-viewport-container">
+      <!-- Non-Jumping Status Ribbon placed cleanly ABOVE display -->
+      <div class="status-ribbon">
+        <div class="status-pill">State: <span id="stateBadge" style="color: #64748b; margin-left: 4px;">IDLE</span></div>
+        <div class="status-pill">Ring: <span id="segmentsPill" style="margin-left: 4px;">48 Dots</span></div>
+        <div class="status-pill">Engine: <span style="color: var(--accent); margin-left: 4px;">LP-Core</span></div>
+      </div>
+
+      <div class="round-lcd-bezel">
+        <div class="round-lcd-inner-ring" id="viewportInner">
+          <canvas id="screenCanvas" width="240" height="240"></canvas>
+        </div>
+      </div>
+
+      <!-- Preview Controls Row -->
+      <div class="controls-btn-row">
+        <button class="icon-btn primary" id="btnPlayPause" title="Play / Pause Boot Sequence Preview">
+          <svg id="playIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+        </button>
+
+        <button class="icon-btn" id="btnReset" title="Reset Boot Progress to 0%">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+          </svg>
+        </button>
+
+        <button class="icon-btn" id="btnSnapCenter" title="Center Selected Element on Screen (120, 120)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="2" x2="12" y2="6"></line>
+            <line x1="12" y1="18" x2="12" y2="22"></line>
+            <line x1="2" y1="12" x2="6" y2="12"></line>
+            <line x1="18" y1="12" x2="22" y2="12"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Scrubber -->
+      <div class="control-group" style="width: 100%;">
+        <div class="control-label">
+          <span>Boot Progress</span>
+          <span class="val" id="scrubVal" style="min-width: 48px; text-align: right;">0 %</span>
+        </div>
+        <input type="range" id="progressSlider" min="0" max="100" value="0">
+      </div>
+    </div>
+
+    <!-- Right Column: Settings, Customizer, Generator -->
+    <div class="controls-panel">
+      <div class="card">
+        <div class="tabs-header">
+          <button class="tab-btn active" data-tab="tab-builder">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+              <polyline points="2 17 12 22 22 17"></polyline>
+              <polyline points="2 12 12 17 22 12"></polyline>
+            </svg>
+            <span>Layout Baukasten</span>
+          </button>
+          <button class="tab-btn" data-tab="tab-palette">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle>
+              <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle>
+              <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle>
+              <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle>
+              <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.563-2.512 5.563-5.563C21.996 6.5 17.5 2 12 2z"></path>
+            </svg>
+            <span>Colors & Style</span>
+          </button>
+          <button class="tab-btn" data-tab="tab-import">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+            <span>Custom Logo & Pixel Art</span>
+          </button>
+          <button class="tab-btn" data-tab="tab-export">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="16 18 22 12 16 6"></polyline>
+              <polyline points="8 6 2 12 8 18"></polyline>
+            </svg>
+            <span>Export C Header</span>
+          </button>
+        </div>
+
+        <!-- TAB 1: Layout Baukasten & Library -->
+        <div class="tab-content active" id="tab-builder">
+          <div class="control-group">
+            <label class="control-label">Active Canvas Elements</label>
+            <div class="elements-list" id="elementsList">
+              <!-- Dynamically populated via JS -->
+            </div>
+          </div>
+
+          <!-- Professional Inspector with Context-Aware Controls -->
+          <div class="element-inspector" id="elementInspector">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <strong id="inspectorTitle" style="color:var(--primary); font-size:0.88rem;">Element Properties</strong>
+              <button class="icon-btn" id="btnDeleteElement" title="Delete / Hide Element" style="width:28px; height:28px; border-radius:6px; color:var(--danger);">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            </div>
+
+            <!-- Position X Row (Hidden for concentric Ring) -->
+            <div class="control-group" id="inspectorPosXGroup">
+              <span class="control-label">Position X (Horizontal)</span>
+              <div class="spinbox-row">
+                <input type="range" id="sliderPosX" min="25" max="215" value="120">
+                <input type="number" id="numPosX" min="25" max="215" value="120" class="spinbox">
+                <span class="unit-label">px</span>
+              </div>
+            </div>
+
+            <!-- Position Y Row (Hidden for concentric Ring) -->
+            <div class="control-group" id="inspectorPosYGroup">
+              <span class="control-label">Position Y (Vertical)</span>
+              <div class="spinbox-row">
+                <input type="range" id="sliderPosY" min="25" max="215" value="120">
+                <input type="number" id="numPosY" min="25" max="215" value="120" class="spinbox">
+                <span class="unit-label">px</span>
+              </div>
+            </div>
+
+            <!-- Scale Row (Hidden for concentric Ring) -->
+            <div class="control-group" id="inspectorScaleGroup">
+              <span class="control-label">Scale / Size</span>
+              <div class="spinbox-row">
+                <input type="range" id="sliderScale" min="0.4" max="3.0" step="0.05" value="1.0">
+                <input type="number" id="numScale" min="0.4" max="3.0" step="0.05" value="1.0" class="spinbox">
+                <span class="unit-label">x</span>
+              </div>
+            </div>
+
+            <!-- Ring Specific Inspector -->
+            <div class="control-group" id="inspectorRingGroup" style="display:none;">
+              <span class="control-label">Ring Radius</span>
+              <div class="spinbox-row">
+                <input type="range" id="sliderRingRadius" min="80" max="116" value="112">
+                <input type="number" id="numRingRadius" min="80" max="116" value="112" class="spinbox">
+                <span class="unit-label">px</span>
+              </div>
+
+              <!-- Configurable Segment Dots Count -->
+              <div class="control-group" id="ringSegmentsRow" style="margin-top:0.4rem;">
+                <span class="control-label">Segment Dots (12 - 72)</span>
+                <div class="spinbox-row">
+                  <input type="range" id="sliderRingSegments" min="12" max="72" step="2" value="48">
+                  <input type="number" id="numRingSegments" min="12" max="72" step="2" value="48" class="spinbox">
+                  <span class="unit-label">dots</span>
+                </div>
+              </div>
+
+              <div style="margin-top:0.4rem;">
+                <span class="control-label" style="margin-bottom:0.3rem;">Ring Geometry Style</span>
+                <select id="selRingStyle" style="width:100%; background:#0f172a; border:1px solid var(--surface-border); border-radius:6px; color:var(--text); font-size:0.75rem; padding:0.45rem;">
+                  <option value="dots">Segment Dots (Configurable)</option>
+                  <option value="arc">Continuous Arc Bar</option>
+                  <option value="dashed">Dashed Progress Arc</option>
+                </select>
+              </div>
+
+              <!-- Rainbow Celebration Threshold (Ring Completion) -->
+              <div class="control-group" style="margin-top:0.4rem; padding-top:0.55rem; border-top:1px solid rgba(255,255,255,0.06);">
+                <span class="control-label">Celebration Rainbow Threshold</span>
+                <div class="spinbox-row">
+                  <input type="range" id="happyThreshSlider" min="50" max="100" value="85">
+                  <input type="number" id="numHappyThresh" min="50" max="100" value="85" class="spinbox">
+                  <span class="unit-label">%</span>
+                </div>
+              </div>
+
+              <!-- Completion Hold Duration (Ring Handoff) -->
+              <div class="control-group" style="margin-top:0.4rem;">
+                <span class="control-label">Completion Hold Duration</span>
+                <div class="spinbox-row">
+                  <input type="range" id="holdDurationSlider" min="0" max="1500" step="50" value="600">
+                  <input type="number" id="numHoldDuration" min="0" max="1500" step="50" value="600" class="spinbox">
+                  <span class="unit-label">ms</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Wordmark Specific Inspector -->
+            <div class="control-group" id="inspectorWordmarkGroup" style="display:none;">
+              <span class="control-label">Wordmark Text & Arc</span>
+              <div style="display:flex; gap:0.5rem;">
+                <input type="text" id="inspectorWordmarkText" maxlength="12" value="ESPIDF" style="flex:1; background:#0f172a; border:1px solid var(--surface-border); border-radius:6px; color:var(--text); padding:0.4rem; font-family:monospace; text-transform:uppercase;">
+                <select id="selWordmarkStyle" style="background:#0f172a; border:1px solid var(--surface-border); border-radius:6px; color:var(--text); font-size:0.75rem; padding:0.4rem;">
+                  <option value="straight">Straight</option>
+                  <option value="bottom_arc">Bottom Arc</option>
+                  <option value="top_arc">Top Arc</option>
+                </select>
+              </div>
+
+              <!-- Arc Radius (Only shown in curved mode) -->
+              <div class="control-group" id="wordmarkArcRadiusRow" style="margin-top:0.4rem; display:none;">
+                <span class="control-label">Arc Distance / Radius</span>
+                <div class="spinbox-row">
+                  <input type="range" id="sliderWordmarkRadius" min="70" max="105" value="92">
+                  <input type="number" id="numWordmarkRadius" min="70" max="105" value="92" class="spinbox">
+                  <span class="unit-label">px</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Dynamic Element Colors Container -->
+            <div class="control-group" id="inspectorColorsContainer" style="padding-top:0.4rem; border-top:1px solid rgba(255,255,255,0.06); display:flex; flex-direction:column; gap:0.5rem;">
+              <!-- Dynamically populated via JS per element type -->
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: Palette Customizer (Clean Kconfig Engine Defaults) -->
+        <div class="tab-content" id="tab-palette">
+          <p style="font-size:0.82rem; color:var(--text-muted);">Configure 16-bit RGB565 colors for boot engine Kconfig defaults:</p>
+          <div class="color-grid">
+            <div class="color-item">
+              <input type="color" class="color-picker" id="colorBg" value="#000000">
+              <div class="color-meta">
+                <strong>Background</strong>
+                <code id="rgb565Bg">0x0000</code>
+              </div>
+            </div>
+            <div class="color-item">
+              <input type="color" class="color-picker" id="colorRing" value="#00e5ff">
+              <div class="color-meta">
+                <strong>Progress Ring</strong>
+                <code id="rgb565Ring">0x073F</code>
+              </div>
+            </div>
+            <div class="color-item">
+              <input type="color" class="color-picker" id="colorMascot" value="#ffffff">
+              <div class="color-meta">
+                <strong>Mascot / Body</strong>
+                <code id="rgb565Body">0xFFFF</code>
+              </div>
+            </div>
+            <div class="color-item">
+              <input type="color" class="color-picker" id="colorAccent" value="#00e5ff">
+              <div class="color-meta">
+                <strong>Accent & Eyes</strong>
+                <code id="rgb565Accent">0x073F</code>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: Custom Logo & In-Browser Pixel Art Editor -->
+        <div class="tab-content" id="tab-import">
+          <div class="dropzone" id="dropzone">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--primary); margin-bottom:0.3rem;">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+            <p><strong>Drag & Drop PNG, JPG or SVG here</strong></p>
+            <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.2rem;">Auto-converts and inserts into the canvas as a 1-bit monochrome C bitmap.</p>
+            <input type="file" id="fileInput" accept="image/*" style="display:none">
+          </div>
+
+          <div class="control-group">
+            <div class="control-label">
+              <span>Binarization Contrast Threshold</span>
+              <span class="val" id="threshVal">128</span>
+            </div>
+            <input type="range" id="contrastThreshold" min="10" max="245" value="128">
+          </div>
+
+          <!-- Pixel Sprite Drawing Editor with Clean Icon-Buttons -->
+          <div class="pixel-grid-container">
+            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+              <span style="font-size:0.8rem; font-weight:600;">Interactive 32x32 Pixel Sprite Editor</span>
+              <div style="display:flex; gap:0.4rem;">
+                <button class="icon-btn primary" id="btnPen" title="Pen Tool (Draw Pixels)" style="width:32px; height:32px;">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                  </svg>
+                </button>
+                <button class="icon-btn" id="btnEraser" title="Eraser Tool (Erase Pixels)" style="width:32px; height:32px;">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"></path>
+                    <path d="M22 21H7"></path>
+                    <path d="m5 11 9 9"></path>
+                  </svg>
+                </button>
+                <button class="icon-btn" id="btnClearPixelGrid" title="Clear Grid (Erase All Pixels)" style="width:32px; height:32px; color:var(--danger);">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <canvas id="pixelArtCanvas" width="160" height="160"></canvas>
+            <small style="color:var(--text-muted); font-size:0.7rem;">Click or drag on the grid to draw custom icons pixel-by-pixel.</small>
+          </div>
+        </div>
+
+        <!-- TAB 4: Code & Header Export -->
+        <div class="tab-content" id="tab-export">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <p style="font-size:0.82rem; color:var(--text-muted);">Production C Header (PolyForm Noncommercial License 1.0.0):</p>
+            <div style="display:flex; gap:0.45rem;">
+              <button class="btn btn-primary btn-sm" id="btnCopyCode">Copy Code</button>
+              <button class="btn btn-outline btn-sm" id="btnDownloadHeader">Download .h</button>
+            </div>
+          </div>
+          <div class="code-box" id="codeOutput">/* Generating configuration... */</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Collapsible Bottom Terminal Drawer (PC-Tool Style Dock) -->
+  <div class="bottom-terminal-drawer" id="bottomTerminalDrawer">
+    <div class="drawer-header">
+      <div class="drawer-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="4 17 10 11 4 5"></polyline>
+          <line x1="12" y1="19" x2="20" y2="19"></line>
+        </svg>
+        <span>ESP32 Serial Console (115200 Baud)</span>
+        <span class="badge" id="drawerConnBadge" style="font-size:0.68rem; padding:0.1rem 0.4rem;">Disconnected</span>
+      </div>
+      <div class="drawer-actions">
+        <div class="drawer-hw-group">
+          <button class="icon-btn-sm" id="btnHwModeLoop" title="Loop Mode: Continuous Boot Animation (mode 0)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="17 1 21 5 17 9"></polyline>
+              <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+              <polyline points="7 23 3 19 7 15"></polyline>
+              <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+            </svg>
+          </button>
+          <button class="icon-btn-sm" id="btnHwModeSingle" title="Single Cycle Mode: Run Once & Hold Completion (mode 2)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 14 14"></polyline>
+            </svg>
+          </button>
+          <button class="icon-btn-sm" id="btnHwModeEvent" title="Event Mode: Event-Driven Progress (mode 3)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+          </button>
+        </div>
+
+        <div class="drawer-sep"></div>
+
+        <div class="drawer-hw-group">
+          <button class="icon-btn-sm" id="btnHwRestartLP" title="Restart LP Boot Animation Engine (restart)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
+          </button>
+          <button class="icon-btn-sm" id="btnHwHandoff" title="Trigger HP Display Handoff (handoff)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+          </button>
+          <button class="icon-btn-sm" id="btnHwInfo" title="Query Hardware Telemetry & State (info)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+          </button>
+        </div>
+
+        <div class="drawer-sep"></div>
+
+        <button class="icon-btn-sm" onclick="clearTerminal()" title="Clear Console Log">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </button>
+        <button class="icon-btn-sm" id="btnCloseDrawer" title="Collapse Console">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="terminal-box" id="termBox">
+      <div class="term-line term-info">Click the Serial Plug icon in the top header to connect your USB-C COM port.</div>
+    </div>
+    <div class="drawer-cmd-bar">
+      <input type="text" id="termCmdInput" placeholder="Send serial command (e.g. info, restart, handoff, mode 0, progress 50)..." autocomplete="off">
+      <button class="btn btn-primary btn-sm" id="btnSendCmd">Send</button>
+    </div>
+  </div>
+
+  <!-- Context Menu for Canvas -->
+  <div class="context-menu" id="canvasContextMenu">
+    <div class="context-item" id="ctxCenter">⌖ Center on Screen</div>
+    <div class="context-item" id="ctxDelete" style="color:var(--danger);">🗑 Delete / Hide</div>
+  </div>
+
+  <!-- Quick Guide / Help Dialog Modal -->
+  <div id="helpModal" class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:0.6rem;">
+          <span style="font-size:1.05rem; font-weight:700; color:#fff;">ESP-IDF Boot Display Studio</span>
+          <span class="badge">User Guide</span>
+        </div>
+        <button class="icon-btn" id="btnCloseHelp" title="Close Help Dialog" style="width:28px; height:28px; border-radius:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="help-section">
+          <h4>1. Visual Canvas & Magnetic Snapping</h4>
+          <p>Drag and drop elements directly on the simulated 240x240 GC9A01 circular display. Elements are strictly clamped within the circular perimeter (<code>R &le; 96px</code>) so they can never get lost off-screen. Moving an element near center (120, 120) within &plusmn;5px activates cyan guideline crosshairs and magnetically snaps it into place. Right-click any element on the display to center or hide it.</p>
+        </div>
+        <div class="help-section">
+          <h4>2. Contextual Element Inspector</h4>
+          <p>Selecting an element in the layout or clicking it on the screen opens its properties. Positions (X, Y) and Scale feature synchronized range sliders and precise pixel spinboxes. The concentric Outer Progress Ring automatically hides irrelevant position controls and exposes direct Ring Radius (80&ndash;116px) and style options (48 Dots, Continuous Arc, Dashed Arc). Wordmark supports straight, bottom arc, and top arc text projection.</p>
+        </div>
+        <div class="help-section">
+          <h4>3. Multi-Color Elements & 16-Bit RGB565 Engine</h4>
+          <p>Multi-color elements like the Animated Pixel Mascot offer separate controls for Body Fill and Eyes & Accent. Changing any color in the Inspector instantly updates the preview, synchronizes with the Kconfig defaults in the Colors tab, and calculates exact 16-bit RGB565 hex values (<code>0x0000</code> black, <code>0x073F</code> vibrant cyan, <code>0xFFFF</code> white).</p>
+        </div>
+        <div class="help-section">
+          <h4>4. 32x32 Pixel Sprite Editor & Brand Logo Import</h4>
+          <p>Draw custom pixel icons directly in your browser using the Pen, Eraser, and Clear icon tools. Alternatively, drag and drop any image (PNG, JPG, SVG) onto the dropzone for auto-binarization into an ultra-fast 1-bit monochrome C bitmap.</p>
+        </div>
+        <div class="help-section">
+          <h4>5. Web Serial Live Sync & ESP32 Hardware Console</h4>
+          <p>Pair your ESP32-P4 development board over USB-C at 115200 baud via the top header Plug icon. Real-time telemetry (Init latency, Frame render time, LP firmware state) is displayed directly in the titlebar. Use the icon buttons under the display for instant hardware control (Loop, Single Cycle, Event Mode, Restart LP, Trigger Handoff, and Telemetry Query). Toggle the docked bottom Terminal Drawer anytime to send direct serial commands.</p>
+        </div>
+        <div class="help-section">
+          <h4>6. Production C-Header Export</h4>
+          <p>The Export tab generates a complete, clean <code>boot_logo_custom.h</code> with pre-configured Kconfig macros, 5x7 font tables, and 1-bit bitmap masks ready to compile directly into your ESP-IDF project.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ========================================================================
+    // Utility Helpers: Colors & RGB565 Conversions
+    // ========================================================================
+    function hexToRgb(hex) {
+      const bigint = parseInt(hex.replace('#', ''), 16);
+      return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 };
+    }
+
+    function rgbToRgb565(r, g, b) {
+      const r5 = (r >> 3) & 0x1F;
+      const g6 = (g >> 2) & 0x3F;
+      const b5 = (b >> 3) & 0x1F;
+      return (r5 << 11) | (g6 << 5) | b5;
+    }
+
+    function getRgb565Hex(hex) {
+      const rgb = hexToRgb(hex);
+      const val = rgbToRgb565(rgb.r, rgb.g, rgb.b);
+      return `0x${val.toString(16).toUpperCase().padStart(4, '0')}`;
+    }
+
+    function hslToRgb565(h, s, l) {
+      s /= 100; l /= 100;
+      const k = n => (n + h / 30) % 12;
+      const a = s * Math.min(l, 1 - l);
+      const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+      return rgbToRgb565(Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255));
+    }
+
+    function getOkRingColor(segment, frame, totalSegments = 48) {
+      const baseHue = (segment * 360) / totalSegments;
+      const rotation = (frame * 12) % 360;
+      const hue = (baseHue + rotation) % 360;
+      return hslToRgb565(hue, 100, 58);
+    }
+
+    function hex565ToRgbHex(rgb565) {
+      const r = Math.round(((rgb565 >> 11) & 0x1F) * 255 / 31);
+      const g = Math.round(((rgb565 >> 5) & 0x3F) * 255 / 63);
+      const b = Math.round((rgb565 & 0x1F) * 255 / 31);
+      return ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    }
+
+    // Standard 5x7 Pixel Font Dictionary
+    const FONT_MAP = {
+      'A': [0x0E, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11],
+      'B': [0x1E, 0x11, 0x11, 0x1E, 0x11, 0x11, 0x1E],
+      'C': [0x0E, 0x11, 0x10, 0x10, 0x10, 0x11, 0x0E],
+      'D': [0x1E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x1E],
+      'E': [0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x1F],
+      'F': [0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x10],
+      'G': [0x0E, 0x11, 0x10, 0x13, 0x11, 0x11, 0x0E],
+      'H': [0x11, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11],
+      'I': [0x0E, 0x04, 0x04, 0x04, 0x04, 0x04, 0x0E],
+      'J': [0x07, 0x02, 0x02, 0x02, 0x02, 0x12, 0x0C],
+      'K': [0x11, 0x12, 0x14, 0x18, 0x14, 0x12, 0x11],
+      'L': [0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x1F],
+      'M': [0x11, 0x1B, 0x15, 0x15, 0x11, 0x11, 0x11],
+      'N': [0x11, 0x19, 0x15, 0x13, 0x11, 0x11, 0x11],
+      'O': [0x0E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E],
+      'P': [0x1E, 0x11, 0x11, 0x1E, 0x10, 0x10, 0x10],
+      'Q': [0x0E, 0x11, 0x11, 0x11, 0x15, 0x09, 0x16],
+      'R': [0x1E, 0x11, 0x11, 0x1E, 0x14, 0x12, 0x11],
+      'S': [0x0F, 0x10, 0x10, 0x0E, 0x01, 0x01, 0x1E],
+      'T': [0x1F, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04],
+      'U': [0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E],
+      'V': [0x11, 0x11, 0x11, 0x11, 0x11, 0x0A, 0x04],
+      'W': [0x11, 0x11, 0x11, 0x15, 0x15, 0x15, 0x0A],
+      'X': [0x11, 0x11, 0x0A, 0x04, 0x0A, 0x11, 0x11],
+      'Y': [0x11, 0x11, 0x0A, 0x04, 0x04, 0x04, 0x04],
+      'Z': [0x1F, 0x01, 0x02, 0x04, 0x08, 0x10, 0x1F],
+      '0': [0x0E, 0x11, 0x13, 0x15, 0x19, 0x11, 0x0E],
+      '1': [0x04, 0x0C, 0x04, 0x04, 0x04, 0x04, 0x0E],
+      '2': [0x0E, 0x11, 0x01, 0x06, 0x08, 0x10, 0x1F],
+      '3': [0x1F, 0x02, 0x04, 0x02, 0x01, 0x11, 0x0E],
+      '4': [0x02, 0x06, 0x0A, 0x12, 0x1F, 0x02, 0x02],
+      '5': [0x1F, 0x10, 0x1E, 0x01, 0x01, 0x11, 0x0E],
+      '6': [0x06, 0x08, 0x10, 0x1E, 0x11, 0x11, 0x0E],
+      '7': [0x1F, 0x01, 0x02, 0x04, 0x08, 0x08, 0x08],
+      '8': [0x0E, 0x11, 0x11, 0x0E, 0x11, 0x11, 0x0E],
+      '9': [0x0E, 0x11, 0x11, 0x0F, 0x01, 0x02, 0x0C],
+      '-': [0x00, 0x00, 0x00, 0x1F, 0x00, 0x00, 0x00],
+      '.': [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04],
+      ' ': [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+    };
+
+    // ========================================================================
+    // Modular State & Elements
+    // ========================================================================
+    const state = {
+      progress: 0,
+      activeSegments: 0,
+      isPlaying: false,
+      speed: 1.0,
+      happyThreshold: 85,
+      completionHoldMs: 600,
+      holdElapsed: 0,
+      frameCounter: 0,
+      lastTimestamp: 0,
+      fps: 30,
+      bootState: 'IDLE',
+      selectedElementId: 'mascot',
+      snapCrosshair: { x: null, y: null },
+
+      colors: {
+        bg: '#000000',      // Kconfig default 0x0000
+        ring: '#00e5ff',    // Kconfig default 0x073F
+        mascot: '#ffffff',  // Kconfig default 0xFFFF
+        accent: '#00e5ff'   // Kconfig default 0x073F
+      },
+
+      elements: {
+        ring: {
+          id: 'ring',
+          name: 'Outer Progress Ring',
+          enabled: true,
+          radius: 112,
+          segments: 48,
+          style: 'dots', // 'dots', 'arc', 'dashed'
+          color: '#00e5ff',
+          selectable: true,
+          x: 120, y: 120, w: 224, h: 224
+        },
+        mascot: {
+          id: 'mascot',
+          name: 'Animated Pixel Mascot',
+          enabled: true,
+          x: 120,
+          y: 92,
+          scale: 2.4,
+          w: 38,
+          h: 48,
+          color: '#ffffff',
+          eyeColor: '#00e5ff',
+          bobbing: true,
+          selectable: true
+        },
+        techCore: {
+          id: 'techCore',
+          name: 'ESP32 Tech Core',
+          enabled: false,
+          x: 120,
+          y: 115,
+          scale: 1.0,
+          w: 50,
+          h: 50,
+          color: '#00e5ff',
+          selectable: true
+        },
+        wordmark: {
+          id: 'wordmark',
+          name: 'Wordmark Text',
+          enabled: true,
+          text: 'ESPIDF',
+          style: 'straight', // 'straight', 'bottom_arc', 'top_arc'
+          arcRadius: 92,
+          x: 120,
+          y: 165,
+          scale: 1.0,
+          w: 80,
+          h: 18,
+          color: '#ffffff',
+          selectable: true
+        },
+        customLogo: {
+          id: 'customLogo',
+          name: 'Custom Brand Logo',
+          enabled: false,
+          x: 120,
+          y: 110,
+          scale: 1.8,
+          w: 32,
+          h: 42,
+          color: '#00e5ff',
+          threshold: 128,
+          img: null,
+          bitmapRows: null,
+          selectable: true
+        }
+      }
+    };
+
+    function computeRingPoints(radius, segments = 48) {
+      const pts = [];
+      for (let i = 0; i < segments; ++i) {
+        const angle = (i / segments) * 2 * Math.PI - Math.PI / 2;
+        pts.push({
+          x: Math.round(120 + Math.cos(angle) * radius),
+          y: Math.round(120 + Math.sin(angle) * radius)
+        });
+      }
+      return pts;
+    }
+    let ringPoints = computeRingPoints(state.elements.ring.radius, state.elements.ring.segments || 48);
+
+    // ========================================================================
+    // Canvas Dragging, Snapping & Boundary Clamping
+    // ========================================================================
+    const canvas = document.getElementById('screenCanvas');
+    const ctx = canvas.getContext('2d');
+    let isDragging = false;
+    let dragTarget = null;
+    let dragOffset = { x: 0, y: 0 };
+
+    function getCanvasCoords(e) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+      };
+    }
+
+    function hitTest(x, y) {
+      const candidates = ['customLogo', 'wordmark', 'techCore', 'mascot'];
+      for (const id of candidates) {
+        const el = state.elements[id];
+        if (!el || !el.enabled || !el.selectable) continue;
+        if (el.id === 'wordmark' && el.style === 'bottom_arc') {
+          const arcR = el.arcRadius || 92;
+          const dist = Math.sqrt((x - 120)**2 + (y - 120)**2);
+          if (y > 140 && Math.abs(dist - arcR) < 22) return el;
+        } else if (el.id === 'wordmark' && el.style === 'top_arc') {
+          const arcR = el.arcRadius || 92;
+          const dist = Math.sqrt((x - 120)**2 + (y - 120)**2);
+          if (y < 100 && Math.abs(dist - arcR) < 22) return el;
+        } else {
+          const halfW = (el.w * (el.scale || 1.0)) / 2 + 6;
+          const halfH = (el.h * (el.scale || 1.0)) / 2 + 6;
+          if (x >= el.x - halfW && x <= el.x + halfW &&
+              y >= el.y - halfH && y <= el.y + halfH) {
+            return el;
+          }
+        }
+      }
+      return null;
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      if (e.button === 2) return; // Right click handled by context menu
+      hideContextMenu();
+      const pt = getCanvasCoords(e);
+      const hit = hitTest(pt.x, pt.y);
+      if (hit) {
+        selectElement(hit.id);
+        isDragging = true;
+        dragTarget = hit;
+        dragOffset.x = pt.x - hit.x;
+        dragOffset.y = pt.y - hit.y;
+      }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging || !dragTarget) return;
+      if (dragTarget.id === 'wordmark' && dragTarget.style !== 'straight') return;
+      const pt = getCanvasCoords(e);
+      let targetX = pt.x - dragOffset.x;
+      let targetY = pt.y - dragOffset.y;
+
+      // Strict Circular Boundary Clamping (cannot escape display)
+      const distFromCenter = Math.sqrt((targetX - 120)**2 + (targetY - 120)**2);
+      const maxRadius = 96;
+      if (distFromCenter > maxRadius) {
+        const angle = Math.atan2(targetY - 120, targetX - 120);
+        targetX = 120 + Math.cos(angle) * maxRadius;
+        targetY = 120 + Math.sin(angle) * maxRadius;
+      }
+
+      // Smart Snapping to Center (120, 120) with threshold +- 5px
+      if (Math.abs(targetX - 120) <= 5) {
+        targetX = 120;
+        state.snapCrosshair.x = 120;
+      } else {
+        state.snapCrosshair.x = null;
+      }
+
+      if (Math.abs(targetY - 120) <= 5) {
+        targetY = 120;
+        state.snapCrosshair.y = 120;
+      } else {
+        state.snapCrosshair.y = null;
+      }
+
+      dragTarget.x = Math.round(targetX);
+      dragTarget.y = Math.round(targetY);
+      updateInspectorFields();
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        dragTarget = null;
+        state.snapCrosshair.x = null;
+        state.snapCrosshair.y = null;
+        updateCodeOutput();
+      }
+    });
+
+    // Touch support
+    canvas.addEventListener('touchstart', (e) => {
+      const pt = getCanvasCoords(e);
+      const hit = hitTest(pt.x, pt.y);
+      if (hit) {
+        selectElement(hit.id);
+        isDragging = true;
+        dragTarget = hit;
+        dragOffset.x = pt.x - hit.x;
+        dragOffset.y = pt.y - hit.y;
+      }
+    }, { passive: false });
+
+    window.addEventListener('touchmove', (e) => {
+      if (!isDragging || !dragTarget) return;
+      if (dragTarget.id === 'wordmark' && dragTarget.style !== 'straight') return;
+      const pt = getCanvasCoords(e);
+      let targetX = pt.x - dragOffset.x;
+      let targetY = pt.y - dragOffset.y;
+      const dist = Math.sqrt((targetX - 120)**2 + (targetY - 120)**2);
+      if (dist > 96) {
+        const angle = Math.atan2(targetY - 120, targetX - 120);
+        targetX = 120 + Math.cos(angle) * 96;
+        targetY = 120 + Math.sin(angle) * 96;
+      }
+      if (Math.abs(targetX - 120) <= 5) targetX = 120;
+      if (Math.abs(targetY - 120) <= 5) targetY = 120;
+      dragTarget.x = Math.round(targetX);
+      dragTarget.y = Math.round(targetY);
+      updateInspectorFields();
+    });
+
+    window.addEventListener('touchend', () => {
+      isDragging = false;
+      dragTarget = null;
+      state.snapCrosshair.x = null;
+      state.snapCrosshair.y = null;
+      updateCodeOutput();
+    });
+
+    // Right-Click Context Menu on Canvas
+    const ctxMenu = document.getElementById('canvasContextMenu');
+    canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      const pt = getCanvasCoords(e);
+      const hit = hitTest(pt.x, pt.y);
+      if (hit) selectElement(hit.id);
+
+      ctxMenu.style.left = `${e.pageX + 4}px`;
+      ctxMenu.style.top = `${e.pageY + 4}px`;
+      ctxMenu.style.display = 'flex';
+    });
+
+    function hideContextMenu() {
+      ctxMenu.style.display = 'none';
+    }
+    window.addEventListener('click', hideContextMenu);
+
+    document.getElementById('ctxCenter').addEventListener('click', () => {
+      const el = state.elements[state.selectedElementId];
+      if (el) {
+        el.x = 120;
+        el.y = 120;
+        updateInspectorFields();
+        updateCodeOutput();
+      }
+    });
+
+    document.getElementById('ctxDelete').addEventListener('click', () => {
+      const el = state.elements[state.selectedElementId];
+      if (el) {
+        el.enabled = false;
+        renderElementsList();
+        updateCodeOutput();
+      }
+    });
+
+    // ========================================================================
+    // Canvas Renderer
+    // ========================================================================
+    function renderScreen() {
+      const p = state.progress;
+
+      // Background
+      ctx.fillStyle = state.colors.bg;
+      ctx.fillRect(0, 0, 240, 240);
+
+      // Determine Technical Boot Engine State
+      let bootState = 'BOOTING';
+      const isCelebration = p >= state.happyThreshold;
+      const isReady = p >= 100;
+      const isInit = p < 16;
+
+      if (p === 0 && !state.isPlaying) {
+        bootState = 'IDLE';
+      } else if (isReady) {
+        bootState = 'READY';
+      } else if (isCelebration) {
+        bootState = 'COMPLETING';
+      } else if (isInit) {
+        bootState = 'INIT';
+      } else {
+        bootState = 'BOOTING';
+      }
+      state.bootState = bootState;
+
+      // 1. Render Outer Ring
+      const ringEl = state.elements.ring;
+      const totalSegments = ringEl.segments || 48;
+      state.activeSegments = Math.min(totalSegments, Math.floor((p / 100) * totalSegments));
+      const pulseSegment = state.activeSegments > 0 ? (state.frameCounter % state.activeSegments) : 0;
+      if (ringEl.enabled) {
+        if (ringEl.style === 'dots') {
+          for (let i = 0; i < totalSegments; ++i) {
+            const pt = ringPoints[i];
+            if (!pt) continue;
+            if (i < state.activeSegments) {
+              if (isCelebration) {
+                const hex565 = getOkRingColor(i, Math.floor(state.frameCounter / 2), totalSegments);
+                ctx.fillStyle = '#' + hex565ToRgbHex(hex565);
+              } else {
+                ctx.fillStyle = ringEl.color || state.colors.ring;
+              }
+            } else {
+              ctx.fillStyle = '#1e293b';
+            }
+            const dotRadius = totalSegments > 56 ? 2.2 : (totalSegments < 24 ? 3.8 : 3.0);
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, dotRadius, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        } else if (ringEl.style === 'arc') {
+          ctx.strokeStyle = '#1e293b';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.arc(120, 120, ringEl.radius, 0, Math.PI * 2);
+          ctx.stroke();
+
+          if (state.activeSegments > 0) {
+            ctx.strokeStyle = isCelebration ? '#10b981' : (ringEl.color || state.colors.ring);
+            ctx.beginPath();
+            ctx.arc(120, 120, ringEl.radius, -Math.PI / 2, -Math.PI / 2 + (p / 100) * Math.PI * 2);
+            ctx.stroke();
+          }
+        } else if (ringEl.style === 'dashed') {
+          ctx.strokeStyle = '#1e293b';
+          ctx.lineWidth = 3;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.arc(120, 120, ringEl.radius, 0, Math.PI * 2);
+          ctx.stroke();
+
+          if (state.activeSegments > 0) {
+            ctx.strokeStyle = isCelebration ? '#10b981' : (ringEl.color || state.colors.ring);
+            ctx.beginPath();
+            ctx.arc(120, 120, ringEl.radius, -Math.PI / 2, -Math.PI / 2 + (p / 100) * Math.PI * 2);
+            ctx.stroke();
+          }
+          ctx.setLineDash([]);
+        }
+      }
+
+      // Vertical Bobbing
+      const bobOffsets = [-2, 0, 2, 1, -1];
+      const bob = bobOffsets[Math.floor(state.frameCounter / 4) % bobOffsets.length];
+
+      // 2. Render Pixel Mascot
+      if (state.elements.mascot.enabled) {
+        renderPixelMascot(state.elements.mascot.x, state.elements.mascot.y + (state.elements.mascot.bobbing ? bob : 0), state.elements.mascot.scale, bootState, pulseSegment);
+      }
+
+      // 3. Render Tech Core
+      if (state.elements.techCore.enabled) {
+        renderTechCore(state.elements.techCore.x, state.elements.techCore.y + bob, state.elements.techCore.scale, bootState);
+      }
+
+      // 4. Render Custom Logo
+      if (state.elements.customLogo.enabled) {
+        renderCustomLogo(state.elements.customLogo.x, state.elements.customLogo.y + bob, state.elements.customLogo.scale);
+      }
+
+      // 5. Render Wordmark
+      if (state.elements.wordmark.enabled) {
+        renderWordmark(state.elements.wordmark.x, state.elements.wordmark.y, state.elements.wordmark.text, state.elements.wordmark.style);
+      }
+
+      // 6. Center Snap Guideline Crosshairs
+      if (state.snapCrosshair.x !== null) {
+        ctx.strokeStyle = 'rgba(6, 182, 212, 0.8)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(120, 14);
+        ctx.lineTo(120, 226);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      if (state.snapCrosshair.y !== null) {
+        ctx.strokeStyle = 'rgba(6, 182, 212, 0.8)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(14, 120);
+        ctx.lineTo(226, 120);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // 7. Active Selection Bounding Box with Corner Dots (Hidden for ring to avoid confusing box)
+      const selEl = state.elements[state.selectedElementId];
+      if (selEl && selEl.enabled && selEl.selectable && selEl.id !== 'ring') {
+        const scale = selEl.scale || 1.0;
+        if (selEl.id === 'wordmark' && (selEl.style === 'bottom_arc' || selEl.style === 'top_arc')) {
+          const arcR = selEl.arcRadius || 92;
+          const isTop = selEl.style === 'top_arc';
+          const angleSpan = 0.8 * scale;
+          const startAngle = (isTop ? -Math.PI / 2 : Math.PI / 2) - angleSpan / 2 - 0.08;
+          const endAngle = (isTop ? -Math.PI / 2 : Math.PI / 2) + angleSpan / 2 + 0.08;
+
+          ctx.strokeStyle = 'rgba(6, 182, 212, 0.7)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.arc(120, 120, arcR, startAngle, endAngle);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        } else {
+          const elW = (selEl.id === 'wordmark') ? ((selEl.text || 'ESPIDF').length * 14) : selEl.w;
+          const halfW = (elW * scale) / 2 + 3;
+          const halfH = (selEl.h * scale) / 2 + 3;
+          ctx.strokeStyle = 'rgba(6, 182, 212, 0.7)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]);
+          ctx.strokeRect(selEl.x - halfW, selEl.y - halfH, halfW * 2, halfH * 2);
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = '#06b6d4';
+          [
+            [selEl.x - halfW, selEl.y - halfH],
+            [selEl.x + halfW, selEl.y - halfH],
+            [selEl.x - halfW, selEl.y + halfH],
+            [selEl.x + halfW, selEl.y + halfH]
+          ].forEach(([cx, cy]) => {
+            ctx.beginPath();
+            ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+          });
+        }
+      }
+
+      // Update Non-Jumping Status Pills
+      const stateBadge = document.getElementById('stateBadge');
+      if (stateBadge) {
+        stateBadge.innerText = bootState;
+        if (bootState === 'READY' || bootState === 'COMPLETING') {
+          stateBadge.style.color = '#10b981';
+        } else if (bootState === 'BOOTING') {
+          stateBadge.style.color = '#38bdf8';
+        } else if (bootState === 'INIT') {
+          stateBadge.style.color = '#94a3b8';
+        } else {
+          stateBadge.style.color = '#64748b';
+        }
+      }
+      updateRingPill();
+      document.getElementById('scrubVal').innerText = `${Math.round(p)} %`;
+    }
+
+    function updateRingPill() {
+      const ringEl = state.elements.ring;
+      const pill = document.getElementById('segmentsPill');
+      if (!pill) return;
+      if (!ringEl.enabled) {
+        pill.innerText = 'Off';
+        pill.style.color = '#64748b';
+      } else if (ringEl.style === 'dots') {
+        pill.innerText = `${ringEl.segments || 48} Dots`;
+        pill.style.color = 'var(--text)';
+      } else if (ringEl.style === 'arc') {
+        pill.innerText = 'Arc Bar';
+        pill.style.color = 'var(--text)';
+      } else if (ringEl.style === 'dashed') {
+        pill.innerText = 'Dashed Arc';
+        pill.style.color = 'var(--text)';
+      }
+    }
+
+    // Mascot Renderer
+    function renderPixelMascot(centerX, centerY, scale, bootState, pulseSegment) {
+      const color = state.elements.mascot.color || state.colors.mascot;
+      ctx.fillStyle = color;
+      const w = 16 * scale;
+      const h = 20 * scale;
+      const startX = centerX - w / 2;
+      const startY = centerY - h / 2;
+
+      ctx.beginPath();
+      ctx.arc(centerX, startY + 16 * (scale / 2.4), 16 * (scale / 2.4), Math.PI, 0, false);
+      ctx.lineTo(centerX + 16 * (scale / 2.4), startY + 38 * (scale / 2.4));
+      ctx.quadraticCurveTo(centerX + 8 * (scale / 2.4), startY + 34 * (scale / 2.4), centerX, startY + 38 * (scale / 2.4));
+      ctx.quadraticCurveTo(centerX - 8 * (scale / 2.4), startY + 34 * (scale / 2.4), centerX - 16 * (scale / 2.4), startY + 38 * (scale / 2.4));
+      ctx.closePath();
+      ctx.fill();
+
+      let gazeX = 0;
+      let gazeY = 0;
+      if (state.activeSegments > 0) {
+        const pt = ringPoints[pulseSegment];
+        const dx = pt.x - centerX;
+        const dy = pt.y - centerY;
+        gazeX = dx > 20 ? 2 : (dx < -20 ? -2 : 0);
+        gazeY = dy > 20 ? 1 : (dy < -20 ? -1 : 0);
+      }
+
+      const isBlink = (state.frameCounter % 60) > 55;
+      const eyeSpacing = 8 * (scale / 2.4);
+      const eyeY = startY + 15 * (scale / 2.4);
+      const eyeColor = state.elements.mascot.eyeColor || state.colors.accent;
+
+      if (bootState === 'COMPLETING' || bootState === 'READY') {
+        ctx.strokeStyle = eyeColor;
+        ctx.lineWidth = 2.2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.arc(centerX - eyeSpacing, eyeY, 4 * (scale / 2.4), Math.PI, 0, true);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(centerX + eyeSpacing, eyeY, 4 * (scale / 2.4), Math.PI, 0, true);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(centerX, eyeY + 7 * (scale / 2.4), 4.5 * (scale / 2.4), 0, Math.PI, false);
+        ctx.stroke();
+      } else if (isBlink || bootState === 'INIT' || (bootState === 'IDLE' && !state.isPlaying)) {
+        ctx.strokeStyle = eyeColor;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(centerX - eyeSpacing - 3, eyeY);
+        ctx.lineTo(centerX - eyeSpacing + 3, eyeY);
+        ctx.moveTo(centerX + eyeSpacing - 3, eyeY);
+        ctx.lineTo(centerX + eyeSpacing + 3, eyeY);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = eyeColor;
+        ctx.fillRect(centerX - eyeSpacing - 2.5 + gazeX, eyeY - 2.5 + gazeY, 5, 6);
+        ctx.fillRect(centerX + eyeSpacing - 2.5 + gazeX, eyeY - 2.5 + gazeY, 5, 6);
+      }
+    }
+
+    // Tech Core
+    function renderTechCore(x, y, scale, bootState) {
+      const isCelebration = (bootState === 'COMPLETING' || bootState === 'READY');
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(scale, scale);
+
+      ctx.fillStyle = '#0f172a';
+      ctx.strokeStyle = isCelebration ? '#10b981' : (state.elements.techCore.color || state.colors.ring);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(-24, -24, 48, 48, 6);
+      ctx.fill();
+      ctx.stroke();
+
+      const pulse = Math.sin(state.frameCounter * 0.1) * 3;
+      ctx.fillStyle = isCelebration ? '#10b981' : (state.elements.techCore.color || state.colors.ring);
+      ctx.beginPath();
+      ctx.arc(0, 0, 8 + (isCelebration ? 3 : pulse), 0, Math.PI * 2);
+      ctx.fill();
+
+      for (let i = -16; i <= 16; i += 8) {
+        ctx.fillRect(i - 1, -29, 2, 5);
+        ctx.fillRect(i - 1, 24, 2, 5);
+        ctx.fillRect(-29, i - 1, 5, 2);
+        ctx.fillRect(24, i - 1, 5, 2);
+      }
+      ctx.restore();
+    }
+
+    // Custom Logo (1-Bit Bitmap Renderer)
+    function renderCustomLogo(x, y, scale) {
+      const cl = state.elements.customLogo;
+      if (!cl.img && !cl.bitmapRows) return;
+
+      if (cl.bitmapRows && cl.bitmapRows.length > 0) {
+        ctx.fillStyle = cl.color || state.colors.ring;
+        const pixelSize = scale;
+        const startX = x - (32 * pixelSize) / 2;
+        const startY = y - (cl.bitmapRows.length * pixelSize) / 2;
+
+        for (let r = 0; r < cl.bitmapRows.length; ++r) {
+          const rowBits = cl.bitmapRows[r];
+          for (let c = 0; c < 32; ++c) {
+            const bit = (rowBits & (1 << (31 - c))) !== 0;
+            if (bit) {
+              ctx.fillRect(startX + c * pixelSize, startY + r * pixelSize, pixelSize, pixelSize);
+            }
+          }
+        }
+      } else if (cl.img) {
+        const targetW = cl.w * scale;
+        const targetH = cl.h * scale;
+        ctx.drawImage(cl.img, x - targetW / 2, y - targetH / 2, targetW, targetH);
+      }
+    }
+
+    // Wordmark with Straight or Curved Arc Modes
+    function renderWordmark(x, y, text, style) {
+      const chars = (text || 'ESPIDF').toUpperCase().split('');
+      const charColor = state.elements.wordmark.color || state.colors.mascot;
+      const scale = state.elements.wordmark.scale || 1.0;
+      ctx.fillStyle = charColor;
+
+      if (style === 'bottom_arc') {
+        const arcRadius = state.elements.wordmark.arcRadius || 92;
+        const angleSpan = 0.8 * scale; // radians
+        const startAngle = Math.PI / 2 - angleSpan / 2;
+        const step = chars.length > 1 ? angleSpan / (chars.length - 1) : 0;
+
+        chars.forEach((ch, idx) => {
+          const angle = startAngle + idx * step;
+          const cx = 120 + Math.cos(angle) * arcRadius;
+          const cy = 120 + Math.sin(angle) * arcRadius;
+          drawChar5x7(ch, cx, cy, 1.4 * scale);
+        });
+      } else if (style === 'top_arc') {
+        const arcRadius = state.elements.wordmark.arcRadius || 92;
+        const angleSpan = 0.8 * scale;
+        const startAngle = -Math.PI / 2 - angleSpan / 2;
+        const step = chars.length > 1 ? angleSpan / (chars.length - 1) : 0;
+
+        chars.forEach((ch, idx) => {
+          const angle = startAngle + idx * step;
+          const cx = 120 + Math.cos(angle) * arcRadius;
+          const cy = 120 + Math.sin(angle) * arcRadius;
+          drawChar5x7(ch, cx, cy, 1.4 * scale);
+        });
+      } else {
+        // Straight
+        const pixelSize = 1.6 * scale;
+        const spacing = 14 * scale;
+        const totalW = chars.length * spacing;
+        const startX = x - totalW / 2 + spacing / 2;
+
+        chars.forEach((ch, idx) => {
+          drawChar5x7(ch, startX + idx * spacing, y, pixelSize);
+        });
+      }
+    }
+
+    function drawChar5x7(ch, cx, cy, pixelSize) {
+      const glyph = FONT_MAP[ch] || FONT_MAP[' '];
+      for (let row = 0; row < 7; ++row) {
+        const rowByte = glyph[row];
+        for (let col = 0; col < 5; ++col) {
+          if (rowByte & (1 << (4 - col))) {
+            ctx.fillRect(
+              cx + (col - 2.5) * pixelSize,
+              cy + (row - 3.5) * pixelSize,
+              pixelSize,
+              pixelSize
+            );
+          }
+        }
+      }
+    }
+
+    // Animation Loop
+    function animationLoop(timestamp) {
+      if (!state.lastTimestamp) state.lastTimestamp = timestamp;
+      const delta = timestamp - state.lastTimestamp;
+
+      if (state.isPlaying) {
+        const step = (delta / 25) * state.speed;
+        if (state.progress < 100) {
+          state.progress = Math.min(100, state.progress + step * 0.7);
+          document.getElementById('progressSlider').value = state.progress;
+          throttledSendProgress(state.progress);
+        } else {
+          state.holdElapsed += delta;
+          if (state.holdElapsed >= state.completionHoldMs) {
+            state.isPlaying = false;
+            updatePlayIcon();
+          }
+        }
+      }
+
+      state.frameCounter++;
+      renderScreen();
+      state.lastTimestamp = timestamp;
+      requestAnimationFrame(animationLoop);
+    }
+    requestAnimationFrame(animationLoop);
+
+    function updatePlayIcon() {
+      const icon = document.getElementById('playIcon');
+      if (state.isPlaying) {
+        icon.innerHTML = '<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>';
+      } else {
+        icon.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
+      }
+    }
+
+    // ========================================================================
+    // Baukasten Inspector & Layer Manager
+    // ========================================================================
+    function renderElementsList() {
+      const container = document.getElementById('elementsList');
+      container.innerHTML = '';
+
+      Object.values(state.elements).forEach(el => {
+        // Do not display custom logo in list if nothing uploaded/drawn yet
+        if (el.id === 'customLogo' && !el.img && !el.bitmapRows) return;
+
+        const card = document.createElement('div');
+        card.className = `element-card ${el.id === state.selectedElementId ? 'active' : ''}`;
+        card.innerHTML = `
+          <div class="element-left">
+            <input type="checkbox" class="element-checkbox" ${el.enabled ? 'checked' : ''} data-id="${el.id}">
+            <span class="element-name">${el.name}</span>
+          </div>
+          <span class="element-meta">(${el.x}, ${el.y})</span>
+        `;
+
+        card.addEventListener('click', (e) => {
+          if (e.target.classList.contains('element-checkbox')) return;
+          selectElement(el.id);
+        });
+
+        const chk = card.querySelector('.element-checkbox');
+        chk.addEventListener('change', (e) => {
+          el.enabled = e.target.checked;
+          if (el.id === 'ring') updateRingPill();
+          updateCodeOutput();
+        });
+
+        container.appendChild(card);
+      });
+    }
+
+    function selectElement(id) {
+      state.selectedElementId = id;
+      renderElementsList();
+      updateInspectorFields();
+    }
+
+    function updateInspectorFields() {
+      const el = state.elements[state.selectedElementId];
+      if (!el) return;
+
+      document.getElementById('inspectorTitle').innerText = `${el.name}`;
+
+      const posXGroup = document.getElementById('inspectorPosXGroup');
+      const posYGroup = document.getElementById('inspectorPosYGroup');
+      const scaleGroup = document.getElementById('inspectorScaleGroup');
+      const ringGroup = document.getElementById('inspectorRingGroup');
+      const wmGroup = document.getElementById('inspectorWordmarkGroup');
+      const colorsContainer = document.getElementById('inspectorColorsContainer');
+
+      // Concentric Outer Ring has no Pos X, Pos Y, or Scale sliders (locks to center)
+      if (el.id === 'ring') {
+        posXGroup.style.display = 'none';
+        posYGroup.style.display = 'none';
+        scaleGroup.style.display = 'none';
+        ringGroup.style.display = 'flex';
+        wmGroup.style.display = 'none';
+
+        document.getElementById('sliderRingRadius').value = el.radius;
+        document.getElementById('numRingRadius').value = el.radius;
+        document.getElementById('sliderRingSegments').value = el.segments || 48;
+        document.getElementById('numRingSegments').value = el.segments || 48;
+        document.getElementById('ringSegmentsRow').style.display = (el.style === 'dots') ? 'flex' : 'none';
+        document.getElementById('selRingStyle').value = el.style || 'dots';
+        document.getElementById('happyThreshSlider').value = state.happyThreshold;
+        document.getElementById('numHappyThresh').value = state.happyThreshold;
+        document.getElementById('holdDurationSlider').value = state.completionHoldMs;
+        document.getElementById('numHoldDuration').value = state.completionHoldMs;
+
+        colorsContainer.innerHTML = `
+          <span class="control-label">Ring Color (16-Bit RGB565)</span>
+          <div class="color-item" style="padding:0.45rem 0.65rem;">
+            <input type="color" class="color-picker" id="inspRingColor" value="${el.color || state.colors.ring}">
+            <div class="color-meta">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <strong>Progress Ring</strong>
+                <code id="inspCodeRing">${getRgb565Hex(el.color || state.colors.ring)}</code>
+              </div>
+            </div>
+          </div>
+        `;
+
+        document.getElementById('inspRingColor').addEventListener('input', (e) => {
+          el.color = e.target.value;
+          state.colors.ring = e.target.value;
+          document.getElementById('colorRing').value = e.target.value;
+          document.getElementById('rgb565Ring').innerText = getRgb565Hex(e.target.value);
+          document.getElementById('inspCodeRing').innerText = getRgb565Hex(e.target.value);
+          updateCodeOutput();
+        });
+
+      } else {
+        posXGroup.style.display = 'flex';
+        posYGroup.style.display = 'flex';
+        scaleGroup.style.display = 'flex';
+        ringGroup.style.display = 'none';
+
+        document.getElementById('sliderPosX').value = el.x;
+        document.getElementById('numPosX').value = el.x;
+        document.getElementById('sliderPosY').value = el.y;
+        document.getElementById('numPosY').value = el.y;
+        document.getElementById('sliderScale').value = el.scale || 1.0;
+        document.getElementById('numScale').value = (el.scale || 1.0).toFixed(2);
+
+        if (el.id === 'wordmark') {
+          wmGroup.style.display = 'flex';
+          const isArc = (el.style === 'bottom_arc' || el.style === 'top_arc');
+          posXGroup.style.display = isArc ? 'none' : 'flex';
+          posYGroup.style.display = isArc ? 'none' : 'flex';
+          document.getElementById('wordmarkArcRadiusRow').style.display = isArc ? 'block' : 'none';
+          document.getElementById('sliderWordmarkRadius').value = el.arcRadius || 92;
+          document.getElementById('numWordmarkRadius').value = el.arcRadius || 92;
+          document.getElementById('inspectorWordmarkText').value = el.text || 'ESPIDF';
+          document.getElementById('selWordmarkStyle').value = el.style || 'straight';
+
+          colorsContainer.innerHTML = `
+            <span class="control-label">Text Color (16-Bit RGB565)</span>
+            <div class="color-item" style="padding:0.45rem 0.65rem;">
+              <input type="color" class="color-picker" id="inspWordmarkColor" value="${el.color || '#ffffff'}">
+              <div class="color-meta">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <strong>Wordmark Text</strong>
+                  <code id="inspCodeWordmark">${getRgb565Hex(el.color || '#ffffff')}</code>
+                </div>
+              </div>
+            </div>
+          `;
+
+          document.getElementById('inspWordmarkColor').addEventListener('input', (e) => {
+            el.color = e.target.value;
+            document.getElementById('inspCodeWordmark').innerText = getRgb565Hex(e.target.value);
+            updateCodeOutput();
+          });
+
+        } else if (el.id === 'mascot') {
+          wmGroup.style.display = 'none';
+
+          // Multi-Color Mascot: Body Color AND Eyes/Accent Color
+          colorsContainer.innerHTML = `
+            <span class="control-label">Mascot Colors (16-Bit RGB565)</span>
+            <div style="display:flex; flex-direction:column; gap:0.45rem;">
+              <div class="color-item" style="padding:0.45rem 0.65rem;">
+                <input type="color" class="color-picker" id="inspMascotBodyColor" value="${el.color || state.colors.mascot}">
+                <div class="color-meta">
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong>Body Fill</strong>
+                    <code id="inspCodeBody">${getRgb565Hex(el.color || state.colors.mascot)}</code>
+                  </div>
+                </div>
+              </div>
+              <div class="color-item" style="padding:0.45rem 0.65rem;">
+                <input type="color" class="color-picker" id="inspMascotEyesColor" value="${el.eyeColor || state.colors.accent}">
+                <div class="color-meta">
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong>Eyes & Accent</strong>
+                    <code id="inspCodeEyes">${getRgb565Hex(el.eyeColor || state.colors.accent)}</code>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+
+          document.getElementById('inspMascotBodyColor').addEventListener('input', (e) => {
+            el.color = e.target.value;
+            state.colors.mascot = e.target.value;
+            document.getElementById('colorMascot').value = e.target.value;
+            document.getElementById('rgb565Body').innerText = getRgb565Hex(e.target.value);
+            document.getElementById('inspCodeBody').innerText = getRgb565Hex(e.target.value);
+            updateCodeOutput();
+          });
+
+          document.getElementById('inspMascotEyesColor').addEventListener('input', (e) => {
+            el.eyeColor = e.target.value;
+            state.colors.accent = e.target.value;
+            document.getElementById('colorAccent').value = e.target.value;
+            document.getElementById('rgb565Accent').innerText = getRgb565Hex(e.target.value);
+            document.getElementById('inspCodeEyes').innerText = getRgb565Hex(e.target.value);
+            updateCodeOutput();
+          });
+
+        } else if (el.id === 'customLogo') {
+          wmGroup.style.display = 'none';
+
+          colorsContainer.innerHTML = `
+            <span class="control-label">Logo Color (16-Bit RGB565)</span>
+            <div class="color-item" style="padding:0.45rem 0.65rem;">
+              <input type="color" class="color-picker" id="inspLogoColor" value="${el.color || state.colors.ring}">
+              <div class="color-meta">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <strong>Foreground</strong>
+                  <code id="inspCodeLogo">${getRgb565Hex(el.color || state.colors.ring)}</code>
+                </div>
+              </div>
+            </div>
+          `;
+
+          document.getElementById('inspLogoColor').addEventListener('input', (e) => {
+            el.color = e.target.value;
+            document.getElementById('inspCodeLogo').innerText = getRgb565Hex(e.target.value);
+            updateCodeOutput();
+          });
+
+        } else if (el.id === 'techCore') {
+          wmGroup.style.display = 'none';
+
+          colorsContainer.innerHTML = `
+            <span class="control-label">Core Color (16-Bit RGB565)</span>
+            <div class="color-item" style="padding:0.45rem 0.65rem;">
+              <input type="color" class="color-picker" id="inspTechCoreColor" value="${el.color || state.colors.ring}">
+              <div class="color-meta">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <strong>Microchip Core</strong>
+                  <code id="inspCodeTechCore">${getRgb565Hex(el.color || state.colors.ring)}</code>
+                </div>
+              </div>
+            </div>
+          `;
+
+          document.getElementById('inspTechCoreColor').addEventListener('input', (e) => {
+            el.color = e.target.value;
+            document.getElementById('inspCodeTechCore').innerText = getRgb565Hex(e.target.value);
+            updateCodeOutput();
+          });
+        }
+      }
+    }
+
+    // Two-Way Binding for Sliders & Spinboxes
+    function bindSliderAndSpinbox(sliderId, spinboxId, onVal) {
+      const s = document.getElementById(sliderId);
+      const n = document.getElementById(spinboxId);
+      s.addEventListener('input', (e) => {
+        n.value = e.target.value;
+        onVal(parseFloat(e.target.value));
+      });
+      n.addEventListener('input', (e) => {
+        s.value = e.target.value;
+        onVal(parseFloat(e.target.value));
+      });
+    }
+
+    bindSliderAndSpinbox('sliderPosX', 'numPosX', (val) => {
+      const el = state.elements[state.selectedElementId];
+      if (el) { el.x = Math.round(val); updateCodeOutput(); }
+    });
+
+    bindSliderAndSpinbox('sliderPosY', 'numPosY', (val) => {
+      const el = state.elements[state.selectedElementId];
+      if (el) { el.y = Math.round(val); updateCodeOutput(); }
+    });
+
+    bindSliderAndSpinbox('sliderScale', 'numScale', (val) => {
+      const el = state.elements[state.selectedElementId];
+      if (el) { el.scale = val; updateCodeOutput(); }
+    });
+
+    bindSliderAndSpinbox('sliderRingRadius', 'numRingRadius', (val) => {
+      const ring = state.elements.ring;
+      ring.radius = Math.round(val);
+      ringPoints = computeRingPoints(ring.radius, ring.segments || 48);
+      updateCodeOutput();
+    });
+
+    bindSliderAndSpinbox('sliderRingSegments', 'numRingSegments', (val) => {
+      const ring = state.elements.ring;
+      ring.segments = Math.round(val);
+      ringPoints = computeRingPoints(ring.radius, ring.segments);
+      updateRingPill();
+      updateCodeOutput();
+    });
+
+    bindSliderAndSpinbox('happyThreshSlider', 'numHappyThresh', (val) => {
+      state.happyThreshold = Math.round(val);
+      updateCodeOutput();
+    });
+
+    bindSliderAndSpinbox('holdDurationSlider', 'numHoldDuration', (val) => {
+      state.completionHoldMs = Math.round(val);
+      updateCodeOutput();
+    });
+
+    bindSliderAndSpinbox('sliderWordmarkRadius', 'numWordmarkRadius', (val) => {
+      state.elements.wordmark.arcRadius = Math.round(val);
+      updateCodeOutput();
+    });
+
+    document.getElementById('btnDeleteElement').addEventListener('click', () => {
+      const el = state.elements[state.selectedElementId];
+      if (el) {
+        el.enabled = false;
+        renderElementsList();
+        updateCodeOutput();
+      }
+    });
+
+    document.getElementById('inspectorWordmarkText').addEventListener('input', (e) => {
+      let val = e.target.value.toUpperCase().replace(/[^A-Z0-9\- ]/g, '');
+      state.elements.wordmark.text = val || ' ';
+      updateCodeOutput();
+    });
+
+    document.getElementById('selWordmarkStyle').addEventListener('change', (e) => {
+      state.elements.wordmark.style = e.target.value;
+      updateInspectorFields();
+      updateCodeOutput();
+    });
+
+    document.getElementById('selRingStyle').addEventListener('change', (e) => {
+      state.elements.ring.style = e.target.value;
+      const segRow = document.getElementById('ringSegmentsRow');
+      if (segRow) segRow.style.display = (e.target.value === 'dots') ? 'flex' : 'none';
+      updateRingPill();
+      updateCodeOutput();
+    });
+
+    // ========================================================================
+    // Custom Logo Importer & In-Browser Pixel Art Grid
+    // ========================================================================
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        loadLogoFile(e.dataTransfer.files[0]);
+      }
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) loadLogoFile(e.target.files[0]);
+    });
+
+    let rawUploadedImg = null;
+
+    function loadLogoFile(file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          rawUploadedImg = img;
+          state.elements.customLogo.img = img;
+          state.elements.customLogo.enabled = true;
+          state.elements.mascot.enabled = false; // prioritize logo
+          binarizeLogo();
+          selectElement('customLogo');
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function binarizeLogo() {
+      if (!rawUploadedImg) return;
+      const targetW = 32;
+      const targetH = 32;
+      const offCanvas = document.createElement('canvas');
+      offCanvas.width = targetW;
+      offCanvas.height = targetH;
+      const offCtx = offCanvas.getContext('2d');
+
+      offCtx.fillStyle = '#000000';
+      offCtx.fillRect(0, 0, targetW, targetH);
+      offCtx.drawImage(rawUploadedImg, 0, 0, targetW, targetH);
+
+      const imgData = offCtx.getImageData(0, 0, targetW, targetH);
+      const data = imgData.data;
+      const threshold = parseInt(document.getElementById('contrastThreshold').value);
+      const rows = [];
+
+      for (let y = 0; y < targetH; ++y) {
+        let rowBitmask = 0;
+        for (let x = 0; x < targetW; ++x) {
+          const idx = (y * targetW + x) * 4;
+          const brightness = (data[idx] * 0.299 + data[idx+1] * 0.587 + data[idx+2] * 0.114);
+          if (brightness >= threshold) {
+            rowBitmask |= (1 << (31 - x));
+            pixelGrid[y][x] = 1;
+          } else {
+            pixelGrid[y][x] = 0;
+          }
+        }
+        rows.push(rowBitmask >>> 0);
+      }
+
+      state.elements.customLogo.bitmapRows = rows;
+      drawPixelGridCanvas();
+      updateCodeOutput();
+    }
+
+    document.getElementById('contrastThreshold').addEventListener('input', (e) => {
+      document.getElementById('threshVal').innerText = e.target.value;
+      binarizeLogo();
+    });
+
+    // In-Browser Pixel Art Grid (32x32)
+    const pxCanvas = document.getElementById('pixelArtCanvas');
+    const pxCtx = pxCanvas.getContext('2d');
+    const GRID_SIZE = 32;
+    const pixelGrid = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0));
+    let isDrawingPixel = false;
+    let pixelTool = 'pen'; // 'pen' or 'eraser'
+
+    function drawPixelGridCanvas() {
+      const cellW = pxCanvas.width / GRID_SIZE;
+      const cellH = pxCanvas.height / GRID_SIZE;
+      pxCtx.fillStyle = '#000000';
+      pxCtx.fillRect(0, 0, pxCanvas.width, pxCanvas.height);
+
+      for (let y = 0; y < GRID_SIZE; ++y) {
+        for (let x = 0; x < GRID_SIZE; ++x) {
+          if (pixelGrid[y][x]) {
+            pxCtx.fillStyle = '#06b6d4';
+            pxCtx.fillRect(x * cellW, y * cellH, cellW, cellH);
+          }
+        }
+      }
+
+      // Draw faint grid lines
+      pxCtx.strokeStyle = '#1e293b';
+      pxCtx.lineWidth = 0.5;
+      for (let i = 0; i <= GRID_SIZE; i += 4) {
+        pxCtx.beginPath();
+        pxCtx.moveTo(i * cellW, 0);
+        pxCtx.lineTo(i * cellW, pxCanvas.height);
+        pxCtx.stroke();
+        pxCtx.beginPath();
+        pxCtx.moveTo(0, i * cellH);
+        pxCtx.lineTo(pxCanvas.width, i * cellH);
+        pxCtx.stroke();
+      }
+    }
+    drawPixelGridCanvas();
+
+    function setPixelFromEvent(e) {
+      const rect = pxCanvas.getBoundingClientRect();
+      const x = Math.floor(((e.clientX - rect.left) / rect.width) * GRID_SIZE);
+      const y = Math.floor(((e.clientY - rect.top) / rect.height) * GRID_SIZE);
+      if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE) {
+        pixelGrid[y][x] = pixelTool === 'pen' ? 1 : 0;
+        syncPixelGridToCustomLogo();
+        drawPixelGridCanvas();
+      }
+    }
+
+    pxCanvas.addEventListener('mousedown', (e) => {
+      isDrawingPixel = true;
+      setPixelFromEvent(e);
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (isDrawingPixel) setPixelFromEvent(e);
+    });
+    window.addEventListener('mouseup', () => { isDrawingPixel = false; });
+
+    document.getElementById('btnPen').addEventListener('click', () => {
+      pixelTool = 'pen';
+      document.getElementById('btnPen').classList.add('primary');
+      document.getElementById('btnEraser').classList.remove('primary');
+    });
+    document.getElementById('btnEraser').addEventListener('click', () => {
+      pixelTool = 'eraser';
+      document.getElementById('btnEraser').classList.add('primary');
+      document.getElementById('btnPen').classList.remove('primary');
+    });
+    document.getElementById('btnClearPixelGrid').addEventListener('click', () => {
+      for (let y = 0; y < GRID_SIZE; ++y) pixelGrid[y].fill(0);
+      syncPixelGridToCustomLogo();
+      drawPixelGridCanvas();
+    });
+
+    function syncPixelGridToCustomLogo() {
+      const rows = [];
+      for (let y = 0; y < GRID_SIZE; ++y) {
+        let rowMask = 0;
+        for (let x = 0; x < GRID_SIZE; ++x) {
+          if (pixelGrid[y][x]) rowMask |= (1 << (31 - x));
+        }
+        rows.push(rowMask >>> 0);
+      }
+      state.elements.customLogo.bitmapRows = rows;
+      state.elements.customLogo.enabled = true;
+      renderElementsList();
+      updateCodeOutput();
+    }
+
+    // ========================================================================
+    // Hardened Web Serial Engine (ESP32 Handshake & Signature Verification)
+    // ========================================================================
+    let serialPort = null;
+    let serialReader = null;
+    let serialWriter = null;
+    let isConnected = false;
+    let isFirmwareVerified = false;
+    let handshakeTimeout = null;
+    let lastSerialSendTime = 0;
+
+    function logTerminal(msg, type = 'info') {
+      const box = document.getElementById('termBox');
+      const line = document.createElement('div');
+      line.className = `term-line term-${type}`;
+      line.innerText = msg;
+      box.appendChild(line);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    window.clearTerminal = function() {
+      document.getElementById('termBox').innerHTML = '';
+    };
+
+    function setConnectionState(state) {
+      const btn = document.getElementById('btnConnectSerial');
+      const drawerBadge = document.getElementById('drawerConnBadge');
+
+      btn.classList.remove('connected', 'connecting', 'unrecognized');
+
+      if (state === 'connected') {
+        isConnected = true;
+        isFirmwareVerified = true;
+        btn.classList.add('connected');
+        btn.title = 'Verified: ESP32-P4 Boot Display (115200 Baud) - Click to Disconnect';
+        if (drawerBadge) {
+          drawerBadge.innerText = 'ESP32-P4 Verified';
+          drawerBadge.style.color = '#10b981';
+          drawerBadge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+        }
+      } else if (state === 'probing') {
+        isConnected = true;
+        isFirmwareVerified = false;
+        btn.classList.add('connecting');
+        btn.title = 'Probing target device for ESP-IDF Boot Display firmware...';
+        if (drawerBadge) {
+          drawerBadge.innerText = 'Probing Firmware...';
+          drawerBadge.style.color = '#f59e0b';
+          drawerBadge.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+        }
+      } else if (state === 'unrecognized') {
+        isConnected = true;
+        isFirmwareVerified = false;
+        btn.classList.add('unrecognized');
+        btn.title = 'Foreign firmware: Target did not respond with Boot Display signatures';
+        if (drawerBadge) {
+          drawerBadge.innerText = 'Unrecognized Firmware';
+          drawerBadge.style.color = '#ef4444';
+          drawerBadge.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+        }
+      } else {
+        // Disconnected
+        isConnected = false;
+        isFirmwareVerified = false;
+        btn.title = 'Connect ESP32 (115200 Baud)';
+        if (drawerBadge) {
+          drawerBadge.innerText = 'Disconnected';
+          drawerBadge.style.color = 'var(--text-muted)';
+          drawerBadge.style.borderColor = 'var(--surface-border)';
+        }
+      }
+    }
+
+    // Collapsible Bottom Terminal Drawer Control
+    const termDrawer = document.getElementById('bottomTerminalDrawer');
+    const btnToggleTerm = document.getElementById('btnToggleTerminal');
+
+    function toggleTerminalDrawer(forceState) {
+      const isOpen = (forceState !== undefined) ? forceState : !termDrawer.classList.contains('open');
+      if (isOpen) {
+        termDrawer.classList.add('open');
+        btnToggleTerm.classList.add('active');
+        const box = document.getElementById('termBox');
+        if (box) box.scrollTop = box.scrollHeight;
+      } else {
+        termDrawer.classList.remove('open');
+        btnToggleTerm.classList.remove('active');
+      }
+    }
+
+    btnToggleTerm.addEventListener('click', () => toggleTerminalDrawer());
+    document.getElementById('btnCloseDrawer').addEventListener('click', () => toggleTerminalDrawer(false));
+
+    function handleSendCmd() {
+      const input = document.getElementById('termCmdInput');
+      const cmd = input.value.trim();
+      if (cmd) {
+        sendSerialCmd(cmd);
+        input.value = '';
+      }
+    }
+    document.getElementById('btnSendCmd').addEventListener('click', handleSendCmd);
+    document.getElementById('termCmdInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleSendCmd();
+    });
+
+    async function connectSerial() {
+      if (isConnected) {
+        disconnectSerial();
+        return;
+      }
+
+      if (!('serial' in navigator)) {
+        alert('Web Serial API is not supported in this browser. Please open this file in Google Chrome or Microsoft Edge.');
+        return;
+      }
+
+      try {
+        serialPort = await navigator.serial.requestPort();
+        await serialPort.open({ baudRate: 115200 });
+        serialWriter = serialPort.writable.getWriter();
+        
+        setConnectionState('probing');
+        toggleTerminalDrawer(true);
+        logTerminal('[SYS] Port opened at 115200 baud. Probing for ESP-IDF Boot Display...', 'info');
+
+        readSerialLoop();
+
+        // Send line break & query info
+        sendSerialCmd('');
+        setTimeout(() => sendSerialCmd('info'), 150);
+
+        // Handshake Verification Timeout (3.0s)
+        if (handshakeTimeout) clearTimeout(handshakeTimeout);
+        handshakeTimeout = setTimeout(() => {
+          if (isConnected && !isFirmwareVerified) {
+            setConnectionState('unrecognized');
+            logTerminal('[WARN] Probe timeout: Target device did not respond with Boot Display signatures.', 'err');
+            logTerminal('[HINT] Flash "examples/ws-esp32-p4-wifi6-gc9a01-console-boot-display-dev" to your board.', 'info');
+          }
+        }, 3000);
+
+      } catch (err) {
+        logTerminal('[ERR] Connection failed: ' + err.message, 'err');
+        disconnectSerial();
+      }
+    }
+    document.getElementById('btnConnectSerial').addEventListener('click', connectSerial);
+
+    async function disconnectSerial() {
+      if (handshakeTimeout) {
+        clearTimeout(handshakeTimeout);
+        handshakeTimeout = null;
+      }
+      isConnected = false;
+      isFirmwareVerified = false;
+
+      if (serialReader) {
+        try { await serialReader.cancel(); } catch(e) {}
+        serialReader = null;
+      }
+      if (serialWriter) {
+        try { await serialWriter.close(); } catch(e) {}
+        serialWriter = null;
+      }
+      if (serialPort) {
+        try { await serialPort.close(); } catch(e) {}
+        serialPort = null;
+      }
+      document.getElementById('telInitTime').innerText = '-- µs';
+      document.getElementById('telFrameTime').innerText = '-- µs';
+      document.getElementById('telState').innerText = '--';
+      setConnectionState('disconnected');
+      logTerminal('[SYS] Disconnected.', 'info');
+    }
+
+    async function sendSerialCmd(cmd) {
+      if (!serialWriter || !isConnected) {
+        logTerminal('[WARN] Port not opened. Click Plug icon in header first.', 'err');
+        return;
+      }
+      try {
+        const encoder = new TextEncoder();
+        logTerminal('TX >> ' + cmd, 'tx');
+        await serialWriter.write(encoder.encode(cmd + '\n'));
+      } catch (err) {
+        logTerminal('[ERR] Write error: ' + err.message, 'err');
+      }
+    }
+
+    function throttledSendProgress(val) {
+      if (!isConnected || !serialWriter) return;
+      const now = performance.now();
+      if (now - lastSerialSendTime > 50) {
+        lastSerialSendTime = now;
+        sendSerialCmd(`progress ${Math.round(val)}`);
+      }
+    }
+
+    async function readSerialLoop() {
+      const textDecoder = new TextDecoderStream();
+      serialPort.readable.pipeTo(textDecoder.writable);
+      serialReader = textDecoder.readable.getReader();
+      let lineBuffer = '';
+
+      try {
+        while (isConnected) {
+          const { value, done } = await serialReader.read();
+          if (done) break;
+          if (value) {
+            lineBuffer += value;
+            let lines = lineBuffer.split(/\r?\n/);
+            lineBuffer = lines.pop();
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed) continue;
+              logTerminal('RX << ' + trimmed, 'rx');
+
+              // Intelligent Signature Verification
+              if (!isFirmwareVerified && (
+                  trimmed.includes('LP-Core Boot Display') ||
+                  trimmed.startsWith('Display init:') ||
+                  trimmed.startsWith('Longest animated frame:') ||
+                  trimmed.startsWith('State:') ||
+                  trimmed.includes('boot_display_console_dev') ||
+                  trimmed.includes('Reported event-driven progress:') ||
+                  trimmed.startsWith('Mode set to:')
+              )) {
+                if (handshakeTimeout) {
+                  clearTimeout(handshakeTimeout);
+                  handshakeTimeout = null;
+                }
+                setConnectionState('connected');
+                logTerminal('[SYS] Handshake verified: ESP-IDF LP Boot Display firmware detected!', 'info');
+              }
+
+              if (trimmed.startsWith('Display init:')) {
+                document.getElementById('telInitTime').innerText = trimmed.split(':')[1].trim();
+              } else if (trimmed.startsWith('Longest animated frame:')) {
+                document.getElementById('telFrameTime').innerText = trimmed.split(':')[1].trim();
+              } else if (trimmed.startsWith('State:')) {
+                document.getElementById('telState').innerText = trimmed.split(':')[1].trim();
+              }
+            }
+          }
+        }
+      } catch (err) {
+        if (isConnected) logTerminal('[ERR] Reader error: ' + err.message, 'err');
+      }
+    }
+
+    // Direct ESP32 Hardware Console Command Listeners
+    document.getElementById('btnHwModeLoop').addEventListener('click', () => sendSerialCmd('mode 0'));
+    document.getElementById('btnHwModeSingle').addEventListener('click', () => sendSerialCmd('mode 2'));
+    document.getElementById('btnHwModeEvent').addEventListener('click', () => sendSerialCmd('mode 3'));
+    document.getElementById('btnHwRestartLP').addEventListener('click', () => sendSerialCmd('restart'));
+    document.getElementById('btnHwHandoff').addEventListener('click', () => {
+      state.isPlaying = false;
+      state.progress = 100;
+      document.getElementById('progressSlider').value = 100;
+      sendSerialCmd('handoff');
+    });
+    document.getElementById('btnHwInfo').addEventListener('click', () => sendSerialCmd('info'));
+
+    // ========================================================================
+    // UI Event Handlers & Modal Control
+    // ========================================================================
+    const helpModal = document.getElementById('helpModal');
+    document.getElementById('btnHelp').addEventListener('click', () => {
+      helpModal.classList.add('open');
+    });
+    document.getElementById('btnCloseHelp').addEventListener('click', () => {
+      helpModal.classList.remove('open');
+    });
+    helpModal.addEventListener('click', (e) => {
+      if (e.target === helpModal) helpModal.classList.remove('open');
+    });
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && helpModal.classList.contains('open')) {
+        helpModal.classList.remove('open');
+      }
+    });
+
+    document.getElementById('btnPlayPause').addEventListener('click', () => {
+      if (state.progress >= 100) {
+        state.progress = 0;
+        state.holdElapsed = 0;
+      }
+      state.isPlaying = !state.isPlaying;
+      updatePlayIcon();
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+      state.isPlaying = false;
+      state.progress = 0;
+      state.holdElapsed = 0;
+      updatePlayIcon();
+      document.getElementById('progressSlider').value = 0;
+      throttledSendProgress(0);
+    });
+
+    document.getElementById('btnSnapCenter').addEventListener('click', () => {
+      const el = state.elements[state.selectedElementId];
+      if (el) {
+        el.x = 120;
+        el.y = 120;
+        updateInspectorFields();
+        updateCodeOutput();
+      }
+    });
+
+    document.getElementById('progressSlider').addEventListener('input', (e) => {
+      state.progress = parseFloat(e.target.value);
+      state.isPlaying = false;
+      updatePlayIcon();
+      throttledSendProgress(state.progress);
+    });
+
+    // Global Color Palette (Tab 2) - Synchronized with Elements & Inspector
+    function syncPaletteColors(bg, ring, mascot, accent) {
+      state.colors = { bg, ring, mascot, accent };
+      state.elements.ring.color = ring;
+      state.elements.mascot.color = mascot;
+      state.elements.mascot.eyeColor = accent;
+
+      document.getElementById('colorBg').value = bg;
+      document.getElementById('colorRing').value = ring;
+      document.getElementById('colorMascot').value = mascot;
+      document.getElementById('colorAccent').value = accent;
+
+      document.getElementById('rgb565Bg').innerText = getRgb565Hex(bg);
+      document.getElementById('rgb565Ring').innerText = getRgb565Hex(ring);
+      document.getElementById('rgb565Body').innerText = getRgb565Hex(mascot);
+      document.getElementById('rgb565Accent').innerText = getRgb565Hex(accent);
+
+      updateInspectorFields();
+      updateCodeOutput();
+    }
+
+    document.getElementById('colorBg').addEventListener('input', (e) => {
+      state.colors.bg = e.target.value;
+      document.getElementById('rgb565Bg').innerText = getRgb565Hex(e.target.value);
+      updateCodeOutput();
+    });
+
+    document.getElementById('colorRing').addEventListener('input', (e) => {
+      state.colors.ring = e.target.value;
+      state.elements.ring.color = e.target.value;
+      document.getElementById('rgb565Ring').innerText = getRgb565Hex(e.target.value);
+      updateInspectorFields();
+      updateCodeOutput();
+    });
+
+    document.getElementById('colorMascot').addEventListener('input', (e) => {
+      state.colors.mascot = e.target.value;
+      state.elements.mascot.color = e.target.value;
+      document.getElementById('rgb565Body').innerText = getRgb565Hex(e.target.value);
+      updateInspectorFields();
+      updateCodeOutput();
+    });
+
+    document.getElementById('colorAccent').addEventListener('input', (e) => {
+      state.colors.accent = e.target.value;
+      state.elements.mascot.eyeColor = e.target.value;
+      document.getElementById('rgb565Accent').innerText = getRgb565Hex(e.target.value);
+      updateInspectorFields();
+      updateCodeOutput();
+    });
+
+    // Tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    // ========================================================================
+    // Production C-Header Generator
+    // ========================================================================
+    function updateCodeOutput() {
+      const rgbBg = rgbToRgb565(hexToRgb(state.colors.bg).r, hexToRgb(state.colors.bg).g, hexToRgb(state.colors.bg).b);
+      const rgbRing = rgbToRgb565(hexToRgb(state.colors.ring).r, hexToRgb(state.colors.ring).g, hexToRgb(state.colors.ring).b);
+      const rgbBody = rgbToRgb565(hexToRgb(state.colors.mascot).r, hexToRgb(state.colors.mascot).g, hexToRgb(state.colors.mascot).b);
+      const rgbAccent = rgbToRgb565(hexToRgb(state.colors.accent).r, hexToRgb(state.colors.accent).g, hexToRgb(state.colors.accent).b);
+      const holdFrames = Math.round(state.completionHoldMs / 40);
+
+      const wm = state.elements.wordmark.text || 'ESPIDF';
+      const fontRows = wm.split('').map((ch) => {
+        const glyph = FONT_MAP[ch] || FONT_MAP[' '];
+        const hexes = glyph.map(b => `0x${b.toString(16).toUpperCase().padStart(2, '0')}`).join(', ');
+        return `    {${hexes}},  // ${ch}`;
+      }).join('\n');
+
+      let customLogoCode = '';
+      if (state.elements.customLogo.bitmapRows && state.elements.customLogo.bitmapRows.length > 0) {
+        const rows = state.elements.customLogo.bitmapRows;
+        const hexes = rows.map((r, idx) => `    0x${r.toString(16).toUpperCase().padStart(8, '0')}U,  // row ${idx}`).join('\n');
+        customLogoCode = `
+/* Custom 1-Bit Monochrome Logo Mask (32x32 bits) */
+#define CUSTOM_LOGO_WIDTH   32
+#define CUSTOM_LOGO_HEIGHT  ${rows.length}
+static const uint32_t custom_logo_rows[${rows.length}] = {
+${hexes}
+};
+`;
+      }
+
+      const code = `/**
+ * @file boot_logo_custom.h
+ * @brief Auto-generated by ESP-IDF Boot Display Studio
+ * PolyForm Noncommercial License 1.0.0
+ */
+
+#pragma once
+
+#include <stdint.h>
+
+/* Kconfig defaults matching your visual configuration */
+#define CONFIG_BOOT_DISPLAY_COLOR_BG       0x${rgbBg.toString(16).toUpperCase().padStart(4, '0')}
+#define CONFIG_BOOT_DISPLAY_COLOR_RING     0x${rgbRing.toString(16).toUpperCase().padStart(4, '0')}
+#define CONFIG_BOOT_DISPLAY_COLOR_MASCOT   0x${rgbBody.toString(16).toUpperCase().padStart(4, '0')}
+#define CONFIG_BOOT_DISPLAY_COLOR_ACCENT   0x${rgbAccent.toString(16).toUpperCase().padStart(4, '0')}
+#define CONFIG_BOOT_DISPLAY_RING_SEGMENTS  ${state.elements.ring.segments || 48}
+#define CONFIG_BOOT_DISPLAY_RING_RADIUS    ${state.elements.ring.radius || 112}
+#define CONFIG_BOOT_DISPLAY_HAPPY_THRESHOLD_PERCENT ${state.happyThreshold}
+#define CONFIG_BOOT_DISPLAY_COMPLETION_HOLD_FRAMES  ${holdFrames}
+
+/* Wordmark: "${wm}" */
+#define WORDMARK_CHAR_COUNT ${wm.length}
+static const uint8_t FONT_5X7[${wm.length}][7] = {
+${fontRows}
+};
+${customLogoCode}
+/* Example C initialization */
+#include "lp_boot_display.h"
+
+static const lp_boot_display_config_t boot_cfg = {
+    .mosi_pin = GPIO_NUM_2,
+    .sclk_pin = GPIO_NUM_3,
+    .cs_pin = GPIO_NUM_4,
+    .dc_pin = GPIO_NUM_5,
+    .rst_pin = GPIO_NUM_49,
+    .spi_clock_hz = 8000000,
+    .mode = LP_BOOT_MODE_EVENT_DRIVEN,
+};
+`;
+      document.getElementById('codeOutput').innerText = code;
+    }
+
+    document.getElementById('btnCopyCode').addEventListener('click', () => {
+      navigator.clipboard.writeText(document.getElementById('codeOutput').innerText).then(() => {
+        alert('C-Header configuration copied to clipboard!');
+      });
+    });
+
+    document.getElementById('btnDownloadHeader').addEventListener('click', () => {
+      const blob = new Blob([document.getElementById('codeOutput').innerText], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'boot_logo_custom.h';
+      a.click();
+    });
+
+    // Initialize UI
+    renderElementsList();
+    selectElement('mascot');
+    updateCodeOutput();
+  </script>
+</body>
+</html>

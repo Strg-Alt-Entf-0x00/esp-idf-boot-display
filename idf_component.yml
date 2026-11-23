@@ -1,0 +1,15 @@
+version: "2.1.0"
+name: "esp-idf-boot-display"
+description: "Universal boot display component for ESP32-P4 with LP-Core SPI (GC9A01/ST7789, <15ms boot), HP-Core MIPI-DSI, and HP-Core SPI backends"
+url: "https://github.com/Strg-Alt-Entf-0x00/esp-idf-boot-display"
+repository: "https://github.com/Strg-Alt-Entf-0x00/esp-idf-boot-display.git"
+license: "PolyForm-Noncommercial-1.0.0"
+targets:
+  - esp32p4
+  - esp32s3
+  - esp32c6
+
+dependencies:
+  idf:
+    version: ">=5.0.0"
+

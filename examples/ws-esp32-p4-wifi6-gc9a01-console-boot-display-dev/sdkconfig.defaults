@@ -1,0 +1,60 @@
+# ============================================================================
+# ESP32-P4 Hardware Target
+# ============================================================================
+CONFIG_IDF_TARGET="esp32p4"
+CONFIG_ESP32P4_SELECTS_REV_LESS_V3=y
+
+# ============================================================================
+# ULP / LP-Core Configuration (Required)
+# ============================================================================
+CONFIG_ULP_COPROC_ENABLED=y
+CONFIG_ULP_COPROC_TYPE_LP_CORE=y
+CONFIG_ULP_COPROC_RESERVE_MEM=16384
+
+# Disable LP-Core features we don't need (saves ~25 KB!)
+CONFIG_ULP_ROM_PRINT_ENABLE=n
+CONFIG_ULP_PANIC_OUTPUT_ENABLE=n
+CONFIG_ULP_HP_UART_CONSOLE_PRINT=n
+
+# ============================================================================
+# Power Management (Required for LP-Core)
+# ============================================================================
+CONFIG_PM_ENABLE=y
+
+# ============================================================================
+# Serial Flasher Configuration
+# ============================================================================
+CONFIG_ESPTOOLPY_FLASHSIZE_32MB=y
+
+# ============================================================================
+# Partition Table
+# ============================================================================
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+
+# ============================================================================
+# Compiler Optimization
+# ============================================================================
+CONFIG_COMPILER_OPTIMIZATION_SIZE=y
+CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_ENABLE=y
+
+# ============================================================================
+# Logging Configuration
+# ============================================================================
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+CONFIG_LOG_MAXIMUM_LEVEL_VERBOSE=y
+
+# ============================================================================
+# FreeRTOS Configuration
+# ============================================================================
+CONFIG_FREERTOS_HZ=1000
+
+# ============================================================================
+# LP-Core Boot Display Component Configuration
+# ============================================================================
+CONFIG_LP_BOOT_DISPLAY_MOSI_GPIO=2
+CONFIG_LP_BOOT_DISPLAY_SCLK_GPIO=3
+CONFIG_LP_BOOT_DISPLAY_CS_GPIO=4
+CONFIG_LP_BOOT_DISPLAY_DC_GPIO=5
+CONFIG_LP_BOOT_DISPLAY_RST_GPIO=49
+CONFIG_LP_BOOT_DISPLAY_SPI_CLOCK_HZ=8000000
