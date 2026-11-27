@@ -73,9 +73,9 @@ menu "Boot Display Configuration"
                     Ideal for generic ESP32-P4 and ESP-IDF open-source projects.
 
             config BOOT_DISPLAY_THEME_CUSTOM
-                bool "Custom Artwork Header (Generated via boot_display_studio.html)"
+                bool "Custom Artwork Header (Generated via tools-web/index.html)"
                 help
-                    Use custom bitmap art and geometry exported from tools-web/boot_display_studio.html.
+                    Use custom bitmap art and geometry exported from tools-web/index.html.
         endchoice
 
         config BOOT_DISPLAY_HAPPY_THRESHOLD_PERCENT

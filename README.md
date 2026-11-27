@@ -49,7 +49,7 @@ Power-On / Reset (t = 0 ms)
   - `BOOT_DISPLAY_THEME_PIXEL_MASCOT`: Animated pixel mascot with eye gaze tracking, blinking, and letter-by-letter spring sliding wordmark.
   - `BOOT_DISPLAY_THEME_ESP32_CORE`: Modern high-tech geometric microchip with pulsing core icon.
   - `BOOT_DISPLAY_THEME_CUSTOM`: Custom user bitmap art exported directly from the Web Studio.
-- **Interactive Zero-Install Web Studio:** Single-file HTML5 simulator (`tools-web/boot_display_studio.html`) for live browser previews, color palette adjustments, and one-click C-header generation.
+- **Interactive Zero-Install Web Studio:** Local HTML, CSS, and JavaScript app (`tools-web/index.html`) for live browser previews, color palette adjustments, and one-click C-header generation.
 - **Clean Hardware Handoff:** Releases SPI bus lines and display control gracefully to LVGL, runtime drivers, or secondary tasks.
 
 ---
@@ -117,9 +117,10 @@ void app_main(void)
 
 ---
 
-## 5. Web Studio Designer & Web Serial (`tools-web/boot_display_studio.html`)
+## 5. Boot Display Studio Designer & Web Serial (`tools-web/index.html`)
 
-A zero-install, single-file browser tool is included in `tools-web/boot_display_studio.html`:
+The modular, zero-install browser Studio is included in `tools-web/index.html`,
+with local CSS and JavaScript assets under `tools-web/css/` and `tools-web/js/`:
 
 - **Interactive Visual Baukasten:** Drag & drop layout elements (Progress Ring, Pixel Mascot, Tech Core, 5×7 Wordmark, and Custom Logo) directly on the circular 240×240 display with magnetic snapping to center ($X = 120, Y = 120$).
 - **Live Web Serial Hardware Sync:** Connect directly to your ESP32's USB-C COM port (115200 baud) in Google Chrome or Microsoft Edge. Scrubbing progress in the browser updates the physical GC9A01 LCD in real time, and you can test reboots, handoffs, and query measured LP-Core boot times.
@@ -127,7 +128,11 @@ A zero-install, single-file browser tool is included in `tools-web/boot_display_
 - **Color & Timing Customizer:** Tweak RGB565 color hexes, rainbow celebration thresholds, and hold durations in real time.
 - **C Header Exporter:** Click *Copy to Clipboard* or *Download `boot_logo_custom.h`* to generate production-ready firmware headers.
 
-Simply double-click `tools-web/boot_display_studio.html` to open it in any modern browser—no server or Node.js required.
+The canvas preview and disconnected command responses use local emulation;
+simulated state and timing output are not measurements from a device. Physical
+display updates and device diagnostics require a connected ESP32 over Web
+Serial, supported in Chrome or Edge. The local designer can be opened by
+double-clicking `tools-web/index.html`; no server or Node.js is required.
 
 ---
 

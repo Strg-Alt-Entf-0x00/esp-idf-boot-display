@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Boot Display Studio · GC9A01 240×240 Console &amp; Boot Engine Composer</title>
+
+  <link rel="stylesheet" href="css/design-system.css">
+  <link rel="stylesheet" href="css/console.css">
+</head>
+<body>
+
+  <!-- ========================================================================
+   * 1. SHELL: Header Bar (Title, Subtitle & Pure Icon Actions)
+   * ======================================================================== -->
+  <header class="app-header">
+    <div class="brand-section">
+      <span class="brand-title">BOOT DISPLAY STUDIO</span>
+      <span class="brand-sub">GC9A01 240×240 Round Dial Controller &amp; Boot Engine Composer</span>
+    </div>
+
+    <div class="header-actions">
+      <!-- Web Serial Connect Button -->
+      <button class="icon-btn" id="btnConnect" data-tooltip="Connect ESP32 (115200 Baud)" aria-label="Connect Serial" onclick="toggleConnection()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2v6m0 0l3-3m-3 3L9 5M5 11h14M7 11v5a5 5 0 0010 0v-5"></path>
+        </svg>
+      </button>
+
+      <!-- Toggle Terminal Drawer -->
+      <button class="icon-btn" id="btnToggleDrawer" data-tooltip="Toggle Serial Console" aria-label="Toggle Serial Console" onclick="toggleTerminalDrawer()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="4 17 10 11 4 5"></polyline>
+          <line x1="12" y1="19" x2="20" y2="19"></line>
+        </svg>
+      </button>
+
+      <!-- Help Modal Dialog -->
+      <button class="icon-btn" id="btnHelp" data-tooltip="Help &amp; Documentation" aria-label="Help" onclick="openHelpModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ========================================================================
+   * 2. MAIN WORKSPACE: Stage & Controls Panel
+   * ======================================================================== -->
+  <main class="studio-workspace">
+    <!-- Left Display Stage -->
+    <section class="display-stage">
+      <!-- Stage Top Control Bar: Mode Switcher & Linear Backlight Dimmer -->
+      <div class="stage-top-bar">
+        <div class="stage-mode-seg" id="segEngine">
+          <button class="active" id="btnEngineLp" onclick="setEngine('lp')">LP Autonomous (&lt;15ms)</button>
+          <button id="btnEngineHp" onclick="setEngine('hp')">HP High-Speed (DMA)</button>
+        </div>
+
+        <div class="brightness-control">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-muted);">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <input type="range" class="brightness-slider" id="rngBrightness" min="0" max="100" value="100" oninput="setBrightness(this.value)">
+          <span class="brightness-val" id="valBrightness">100%</span>
+        </div>
+      </div>
+
+      <!-- Dial Bezel: Pure GC9A01 Circular Display Frame -->
+      <div class="dial-bezel" id="dialBezel">
+        <canvas id="cv" width="240" height="240"></canvas>
+      </div>
+
+      <!-- Stage Quick-Action Toolbar -->
+      <div class="stage-quick-bar">
+        <button class="icon-btn" id="btnPlayBoot" data-tooltip="Play / Pause Simulation" aria-label="Play/Pause" onclick="togglePlayBoot()">
+          <svg id="iconPlayPause" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+        </button>
+
+        <button class="icon-btn" id="btnStepFrame" data-tooltip="Single Cycle Simulation (0 -> 100%)" aria-label="Single Cycle" onclick="triggerSingleCycle()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="13 17 18 12 13 7"></polyline>
+            <polyline points="6 17 11 12 6 7"></polyline>
+          </svg>
+        </button>
+
+        <button class="icon-btn" id="btnRestartBoot" data-tooltip="Restart LP-Core Animation (restart)" aria-label="Restart" onclick="restartBootAnimation()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+          </svg>
+        </button>
+
+        <button class="icon-btn" id="btnHandoff" data-tooltip="Trigger LP -> HP Handoff (handoff)" aria-label="Handoff" onclick="triggerHandoff()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+            <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+            <line x1="6" y1="1" x2="6" y2="4"></line>
+            <line x1="10" y1="1" x2="10" y2="4"></line>
+            <line x1="14" y1="1" x2="14" y2="4"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Stage Bottom Control: Boot Progress Scrubber & State -->
+      <div class="stage-progress-bar">
+        <span class="progress-state-label" id="lblBootState">BOOT_STATE_INIT</span>
+        <input type="range" class="progress-slider" id="rngBootProgress" min="0" max="100" value="0" oninput="onScrubberInput(this.value)">
+        <span class="progress-val" id="valBootProgress">0%</span>
+      </div>
+    </section>
+
+    <!-- Right Controls Panel -->
+    <aside class="controls-panel">
+      <!-- Tab Navigation (Clean uppercase text without icons) -->
+      <div class="tab-strip">
+        <button class="tab-btn active" id="btnTabComposer" onclick="switchTab('tabComposer')">Composer &amp; Layers</button>
+        <button class="tab-btn" id="btnTabStates" onclick="switchTab('tabStates')">States &amp; Engine</button>
+      </div>
+
+      <!-- Tab 1: Composer & Layers -->
+      <div class="tab-body active" id="tabComposer">
+        <!-- Layer Stack Management Card -->
+        <div class="panel-card">
+          <div class="panel-title" style="flex-wrap: wrap; gap: 6px;">
+            <span>ACTIVE LAYER STACK</span>
+            <!-- Template Selector Dropdown -->
+            <select class="select-field" id="selTemplate" style="padding: 3px 6px; font-size: 11px; max-width: 155px;" onchange="loadPresetTemplate(this.value)">
+              <option value="" disabled selected>Templates...</option>
+              <option value="blank">Blank Slate (0 Layers)</option>
+              <option value="mascot_ring">Retro Mascot &amp; Ring</option>
+              <option value="minimal_gauge">Minimal Arc Gauge &amp; Metrics</option>
+              <option value="cyberpunk">Cyberpunk Dial &amp; Ticks</option>
+            </select>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 10px;">
+            <select class="select-field" id="selAddElementType" style="flex: 1; padding: 4px 6px; font-size: 11px;">
+              <option value="sprite">+ Sprite / Pixel Art</option>
+              <option value="gauge">+ Progress Gauge (Ring/Arc)</option>
+              <option value="text">+ Typography / Text</option>
+            </select>
+
+            <!-- Add Layer Icon Button -->
+            <button class="icon-btn" id="btnAddLayer" data-tooltip="Add Selected Primitive" aria-label="Add Layer" onclick="addSelectedElement()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </button>
+
+            <!-- Open Sprite & Pixel Art Studio Modal -->
+            <button class="icon-btn" id="btnOpenSpriteStudio" data-tooltip="Sprite &amp; Pixel Art Studio (Mini Paint)" aria-label="Sprite Studio" onclick="openSpriteStudioModal()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+                <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+                <path d="M2 2l7.586 7.586"></path>
+                <circle cx="11" cy="11" r="2"></circle>
+              </svg>
+            </button>
+
+            <!-- Clear All Layers -->
+            <button class="icon-btn" id="btnClearLayers" data-tooltip="Clear All Layers (Blank)" aria-label="Clear Layers" onclick="clearAllLayers()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </button>
+
+            <!-- Save Project Icon Button -->
+            <button class="icon-btn" id="btnSaveProj" data-tooltip="Save Project (.bootproj)" aria-label="Save Project" onclick="saveProjectJson()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+              </svg>
+            </button>
+
+            <!-- Open Project Icon Button -->
+            <button class="icon-btn" id="btnOpenProj" data-tooltip="Open Project (.bootproj)" aria-label="Open Project" onclick="document.getElementById('projectFileInput').click()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </button>
+            <input type="file" id="projectFileInput" accept=".json,.bootproj" style="display:none;" onchange="onProjectFileSelected(event)">
+
+            <!-- Export C-Header Icon Button -->
+            <button class="icon-btn" id="btnOpenExportModal" data-tooltip="Export C-Header (boot_logo_custom.h)" aria-label="Export C-Header" onclick="openExportModal()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="16 18 22 12 16 6"></polyline>
+                <polyline points="8 6 2 12 8 18"></polyline>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Dynamic Layer List -->
+          <div class="layer-list" id="layerListContainer">
+            <!-- Populated dynamically via JS -->
+          </div>
+        </div>
+
+        <!-- Layer Property Inspector Card -->
+        <div class="panel-card" id="layerInspectorCard">
+          <div class="panel-title">
+            <span id="inspectorTitle">LAYER PROPERTIES</span>
+          </div>
+          <div id="inspectorFields" style="display: flex; flex-direction: column; gap: 10px;">
+            <!-- Rendered dynamically depending on selected layer -->
+          </div>
+        </div>
+
+        <!-- Global Canvas Background Card -->
+        <div class="panel-card">
+          <div class="panel-title">
+            <span>CANVAS BACKGROUND COLOR</span>
+          </div>
+          <div class="color-row">
+            <input type="color" class="color-picker" id="pickBgColor" value="#000000" onchange="onBgColorChange(this.value)">
+            <span class="color-hex" id="hexBgColor">#000000 (RGB565: 0x0000)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: States & Engine -->
+      <div class="tab-body" id="tabStates">
+        <!-- Industrial Boot State Machine -->
+        <div class="panel-card">
+          <div class="panel-title">
+            <span>Industrial Boot State Machine</span>
+          </div>
+          <div class="field-row">
+            <div class="field-group">
+              <label class="field-label">Boot Mode</label>
+              <select class="select-field" id="selBootMode" onchange="onBootModeChange(this.value)">
+                <option value="0">0: CONTINUOUS</option>
+                <option value="1">1: STATIC_FRAME</option>
+                <option value="2">2: SINGLE_CYCLE</option>
+                <option value="3" selected>3: EVENT_DRIVEN</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label">Completing Threshold</label>
+              <input type="number" class="input-field" id="numThreshold" min="50" max="99" value="85" onchange="onThresholdChange(this.value)">
+            </div>
+          </div>
+
+          <div class="field-group" style="margin-top: 4px;">
+            <div style="display: flex; justify-content: space-between;">
+              <label class="field-label">Completion Hold Duration (ms)</label>
+              <span style="font-size: 11px; font-family: var(--font-mono); color: var(--accent-ice);" id="valHoldDuration">600 ms</span>
+            </div>
+            <input type="range" min="100" max="2500" step="50" value="600" id="rngHoldDuration" style="accent-color: #38bdf8; cursor: pointer;" oninput="onHoldMsChange(this.value)">
+            <div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); font-family: var(--font-mono);">
+              <span>100 ms</span>
+              <span>600 ms</span>
+              <span>2500 ms</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hardware Engine & Handoff -->
+        <div class="panel-card">
+          <div class="panel-title">
+            <span>Hardware Engine &amp; Bus Handoff</span>
+          </div>
+          <p style="font-size: 11px; color: var(--text-dim); line-height: 1.5;">
+            The autonomous LP-Core driver initializes display registers in &lt;15ms directly out of cold reset. Once HP-Core FreeRTOS finishes peripheral probing, a handoff signal releases the SPI bus without visible display flickering.
+          </p>
+          <div class="field-row">
+            <div class="field-group">
+              <label class="field-label">LP-Core Target Bus</label>
+              <input type="text" class="input-field" value="LP_SPI (GPIO 2,3,4,5)" readonly>
+            </div>
+            <div class="field-group">
+              <label class="field-label">HP-Core Target Bus</label>
+              <input type="text" class="input-field" value="SPI2_HOST (DMA Transmit)" readonly>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- ========================================================================
+   * STATUS BAR
+   * ======================================================================== -->
+  <footer class="status-bar">
+    <div class="status-left">
+      <div class="status-item">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Disconnected</span>
+      </div>
+    </div>
+    <div class="status-right">
+      <div class="status-item" id="statusInfo">Ready · Boot Animation</div>
+    </div>
+  </footer>
+
+  <!-- ========================================================================
+   * 3. SHELL: Collapsible Bottom Terminal Drawer
+   * ======================================================================== -->
+  <div class="bottom-terminal-drawer" id="bottomTerminalDrawer">
+    <div class="drawer-header">
+      <div class="drawer-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="4 17 10 11 4 5"></polyline>
+          <line x1="12" y1="19" x2="20" y2="19"></line>
+        </svg>
+        <span>Serial Console · 115200 baud</span>
+      </div>
+      <div class="drawer-actions">
+        <!-- Pure Icon Buttons with tooltips -->
+        <button class="icon-btn" id="btnTermInfo" data-tooltip="Query Info (info)" aria-label="Info" onclick="sendSerialCmd('info')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+        </button>
+
+        <button class="icon-btn" id="btnTermState" data-tooltip="Query Boot State (state)" aria-label="State" onclick="sendSerialCmd('state')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+        </button>
+
+        <button class="icon-btn" id="btnTermHandoff" data-tooltip="Trigger Handoff (handoff)" aria-label="Handoff" onclick="sendSerialCmd('handoff')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="13 17 18 12 13 7"></polyline>
+            <polyline points="6 17 11 12 6 7"></polyline>
+          </svg>
+        </button>
+
+        <button class="icon-btn" id="btnTermRestart" data-tooltip="Restart LP Boot (restart)" aria-label="Restart" onclick="sendSerialCmd('restart')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+          </svg>
+        </button>
+
+        <button class="icon-btn" id="btnCopyTerm" data-tooltip="Copy Log to Clipboard" aria-label="Copy serial log to clipboard">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="8" y="8" width="13" height="13" rx="2"></rect>
+            <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"></path>
+          </svg>
+        </button>
+
+        <button class="icon-btn" id="btnDownloadTerm" data-tooltip="Download Log" aria-label="Download serial log">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+        </button>
+
+        <button class="icon-btn" id="btnClearTerm" data-tooltip="Clear Log" aria-label="Clear serial log" onclick="clearTerminal()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </button>
+
+        <button class="icon-btn" id="btnCloseDrawer" data-tooltip="Close Drawer" aria-label="Close serial console" onclick="toggleTerminalDrawer(false)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="drawer-body" id="termLog">
+      <div class="log-info">[SYS] Terminal ready. Plug in your ESP32 board and click the top-right plug icon.</div>
+    </div>
+    <div class="drawer-input-row">
+      <input type="text" id="termCmdInput" placeholder="Type a command and press Enter..." onkeydown="if(event.key==='Enter') sendCustomTermCmd()">
+      <button class="icon-btn" id="btnSendCmd" data-tooltip="Send Command" aria-label="Send Command" onclick="sendCustomTermCmd()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="22" y1="2" x2="11" y2="13"></line>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+   * 4. MODALS: Help, Asset Import, C-Header Export
+   * ======================================================================== -->
+
+  <!-- Help Modal -->
+  <div class="modal-backdrop" id="helpModal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <span class="modal-title">Boot Display Studio · Reference</span>
+        <button class="icon-btn" aria-label="Close" onclick="closeHelpModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p><strong>Architecture Overview:</strong> The ESP-IDF Boot Display driver delivers instant-on visual feedback using the autonomous LP-Core (ULP RISC-V @ 40MHz) over LP-SPI, switching seamlessly to HP-Core DMA SPI without bus collision.</p>
+        <p><strong>Universal Composer:</strong> Compose circular boot displays using dynamic stacked elements: Progress Rings, Circular Typography, Pixel Mascots, and 1-bit custom imported Bitmaps.</p>
+        <p><strong>Firmware Commands:</strong></p>
+        <p><code>info</code> — Query display driver statistics, frame timings, and init durations</p>
+        <p><code>state</code> — Read current boot animation state</p>
+        <p><code>handoff</code> — Release display bus from LP-Core to HP-Core</p>
+        <p><code>restart</code> — Re-trigger autonomous LP-Core boot sequence</p>
+        <p><code>progress &lt;0..100&gt;</code> — Report boot completion progress</p>
+        <p><code>mode &lt;0..3&gt;</code> — Set boot display mode (Continuous, Static, Single-Cycle, Event-Driven)</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sprite & Pixel Art Studio Modal Dialog -->
+  <div class="modal-backdrop" id="spriteStudioModal">
+    <div class="modal-card pixel-modal-card">
+      <div class="modal-head">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent-ice);">
+            <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+            <path d="M2 2l7.586 7.586"></path>
+            <circle cx="11" cy="11" r="2"></circle>
+          </svg>
+          <span class="modal-title">Sprite &amp; Pixel Art Studio</span>
+        </div>
+        <button class="icon-btn" aria-label="Close" onclick="closeSpriteStudioModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" style="padding: 16px;">
+        <div class="pixel-studio-body">
+          <!-- Tools Column -->
+          <div class="pixel-tools-col">
+            <span class="field-label" style="margin-bottom: 2px;">Drawing Tools</span>
+            <div class="pixel-tool-grid">
+              <button class="pixel-tool-btn active" id="btnToolPen" data-tooltip="Pencil / Draw" onclick="setPixelTool('pen')">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path></svg>
+              </button>
+              <button class="pixel-tool-btn" id="btnToolEraser" data-tooltip="Eraser (Transparent)" onclick="setPixelTool('eraser')">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 20H7L3 16C2 15 2 13 3 12L13 2L22 11L20 20Z"></path><line x1="7" y1="20" x2="17" y2="10"></line></svg>
+              </button>
+              <button class="pixel-tool-btn" id="btnToolBucket" data-tooltip="Paint Bucket (Flood Fill)" onclick="setPixelTool('bucket')">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 11l-8-8-8.5 8.5a2.12 2.12 0 0 0 0 3l5 5a2.12 2.12 0 0 0 3 0L19 11z"></path><path d="M5 2l5 5"></path><path d="M2 13h15"></path><path d="M22 20a2 2 0 1 1-4 0c0-1.6 2-3 2-3s2 1.4 2 3z"></path></svg>
+              </button>
+              <button class="pixel-tool-btn" id="btnToolPipette" data-tooltip="Eyedropper (Pick Color)" onclick="setPixelTool('picker')">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2l4 4-9 9-4-4 9-9z"></path><path d="M3 21l3-1-2-2-1 3z"></path></svg>
+              </button>
+            </div>
+
+            <span class="field-label" style="margin-top: 6px;">Palette</span>
+            <div class="pixel-swatches-grid" id="pixelSwatches">
+              <!-- Swatches populated via JS -->
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+              <input type="color" id="pixelColorInput" value="#00d4ff" style="width: 26px; height: 26px; border: none; border-radius: 4px; cursor: pointer; background: transparent;" onchange="onPixelColorPickerChange(this.value)">
+              <span style="font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);" id="lblCurrentColor">#00d4ff</span>
+            </div>
+
+            <span class="field-label" style="margin-top: 6px;">Grid Actions</span>
+            <div class="pixel-tool-grid">
+              <button class="pixel-tool-btn" data-tooltip="Clear Grid" onclick="clearPixelGrid()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+              <button class="pixel-tool-btn" data-tooltip="Invert Pixels" onclick="invertPixelGrid()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a10 10 0 0 0 0 20z" fill="currentColor"></path></svg>
+              </button>
+            </div>
+
+            <span class="field-label" style="margin-top: 6px;">Shift 1px</span>
+            <div class="pixel-tool-grid">
+              <button class="pixel-tool-btn" data-tooltip="Shift Up" onclick="shiftPixelGrid(0, -1)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg></button>
+              <button class="pixel-tool-btn" data-tooltip="Shift Down" onclick="shiftPixelGrid(0, 1)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+              <button class="pixel-tool-btn" data-tooltip="Shift Left" onclick="shiftPixelGrid(-1, 0)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+              <button class="pixel-tool-btn" data-tooltip="Shift Right" onclick="shiftPixelGrid(1, 0)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+            </div>
+          </div>
+
+          <!-- Center Interactive Grid Canvas -->
+          <div class="pixel-grid-wrap">
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="field-label" style="margin: 0;">Resolution:</span>
+                <select class="select-field" id="selGridRes" style="padding: 2px 6px; font-size: 11px;" onchange="changeGridResolution(parseInt(this.value))">
+                  <option value="16">16 × 16 px</option>
+                  <option value="24" selected>24 × 24 px</option>
+                  <option value="32">32 × 32 px</option>
+                  <option value="48">48 × 48 px</option>
+                </select>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="field-label" style="margin: 0;">Presets:</span>
+                <select class="select-field" id="selSpritePreset" style="padding: 2px 6px; font-size: 11px;" onchange="loadSpritePreset(this.value)">
+                  <option value="" disabled selected>Load Preset...</option>
+                  <option value="tomato">Tomato / Fruit (24×24)</option>
+                  <option value="mascot">Retro Mascot (12×14)</option>
+                  <option value="chip">ESP32 Chip (24×24)</option>
+                  <option value="heart">Pixel Heart (16×16)</option>
+                  <option value="star">Star / Spark (16×16)</option>
+                </select>
+              </div>
+            </div>
+
+            <canvas id="pixelGridCanvas" width="288" height="288"></canvas>
+            <div style="display: flex; justify-content: space-between; width: 100%; font-size: 10px; font-family: var(--font-mono); color: var(--text-muted);">
+              <span id="lblGridCoords">X: 0, Y: 0</span>
+              <span>Hold &amp; Drag to Paint</span>
+            </div>
+          </div>
+
+          <!-- Right Sidebar: 1:1 Dial Preview & Image Importer -->
+          <div class="pixel-sidebar-col">
+            <span class="field-label">Dial 1:1 Preview</span>
+            <div class="pixel-preview-box">
+              <div class="pixel-dial-preview">
+                <canvas id="previewMiniCanvas" width="48" height="48"></canvas>
+              </div>
+              <span style="font-size: 10px; font-family: var(--font-mono); color: var(--text-muted); margin-top: 6px;" id="lblPreviewScale">Scale: 2x</span>
+            </div>
+
+            <span class="field-label">Import External Asset</span>
+            <div class="dropzone-box" id="spriteDropzone" onclick="document.getElementById('spriteFileInput').click()">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent-ice); margin-bottom: 4px;">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <div style="font-weight: 600; font-size: 11px; color: #fff;">Drop Image File</div>
+              <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">PNG, JPG, SVG, WEBP</div>
+              <input type="file" id="spriteFileInput" accept="image/*" style="display:none;" onchange="handleSpriteImageFile(event)">
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <div style="display: flex; justify-content: space-between;">
+                <span class="field-label" style="font-size: 10px;">Import Threshold</span>
+                <span style="font-size: 10px; font-family: var(--font-mono); color: var(--accent-ice);" id="valImportThreshold">128</span>
+              </div>
+              <input type="range" min="0" max="255" value="128" id="rngImportThreshold" style="width: 100%; accent-color: #38bdf8; cursor: pointer;" oninput="updateImportThreshold(this.value)">
+            </div>
+
+            <button class="btn btn-primary" id="btnSaveSpriteLayer" style="margin-top: auto;" onclick="saveSpriteToLayer()">
+              + Insert as Sprite Layer
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C-Header Export Modal Dialog -->
+  <div class="modal-backdrop" id="cHeaderModal">
+    <div class="modal-card" style="max-width: 680px;">
+      <div class="modal-head">
+        <span class="modal-title">Production C-Header · boot_logo_custom.h</span>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <button class="icon-btn" data-tooltip="Copy to Clipboard" aria-label="Copy Code" onclick="copyHeaderCode()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          </button>
+          <button class="icon-btn" data-tooltip="Download boot_logo_custom.h" aria-label="Download File" onclick="downloadHeaderFile()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+          </button>
+          <button class="icon-btn" aria-label="Close" onclick="closeExportModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <textarea id="codeOutput" readonly style="width: 100%; height: 380px; background: #05070a; border: 1px solid var(--border-color); border-radius: 6px; padding: 12px; font-family: var(--font-mono); font-size: 11px; color: #38bdf8; outline: none; resize: none; white-space: pre;"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+   * 5. JAVASCRIPT: Engine, Mini-LVGL Composer & Hardware Bridge
+   * ======================================================================== -->
+  <script src="js/state.js"></script>
+  <script src="js/sprite-editor.js"></script>
+  <script src="js/canvas-interactions.js"></script>
+  <script src="js/display-renderer.js"></script>
+  <script src="js/boot-controls.js"></script>
+  <script src="js/layer-editor.js"></script>
+  <script src="js/project-export.js"></script>
+  <script src="js/serial-ui.js"></script>
+</body>
+</html>

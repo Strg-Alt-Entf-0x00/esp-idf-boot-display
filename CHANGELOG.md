@@ -11,7 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dynamic frame-time compensation in LP-Core engine, eliminating frame jitter across varying dirty rectangle sizes.
 - Celebratory rainbow progress ring activation when boot progress reaches completion threshold (configurable, default 85%).
 - Configurable completion hold grace period before setting status DONE, ensuring celebratory animations are visible.
-- Interactive zero-install browser Web Studio (`tools-web/boot_display_studio.html`) with circular canvas simulation, dynamic 5x7 ASCII wordmark generation, RGB565 palette converter, and C-header export.
+- Modular zero-install browser Web Studio (`tools-web/index.html`, with local
+  CSS/JS assets) for circular canvas design, dynamic 5x7 ASCII wordmark
+  generation, RGB565 palette conversion, C-header export, and Web Serial
+  hardware control; disconnected command responses use local emulation.
 - Neutral animated pixel mascot theme and dynamic ASCII wordmark (default "ESPIDF").
 
 ### Changed
